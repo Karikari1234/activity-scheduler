@@ -7,6 +7,7 @@ This directory contains documentation for the authentication system implemented 
 ### Ticket Implementation
 
 - [Ticket 1.1: Authentication Implementation](./Ticket-1.1-Auth-Implementation.md) - Detailed documentation of the authentication implementation for Ticket 1.1
+- [Logout Implementation](./Logout-Implementation.md) - Documentation for the logout functionality implemented for Ticket 1.2
 
 ### Technical Documentation
 
@@ -47,13 +48,14 @@ The Activity Scheduler is a Next.js 15 application with the following core techn
 ```
 src/
 ├── app/
-│   ├── auth/         # Email verification and confirmation
+│   ├── auth/         # Email verification, confirmation, and auth actions
+│   ├── components/   # Shared UI components like LogoutButton
 │   ├── dashboard/    # Protected dashboard page
 │   ├── login/        # Login page and server actions
 │   ├── signup/       # Signup page and server actions
 │   ├── globals.css   # Global styles including Tailwind imports
-│   └── layout.tsx    # Root layout
-├── middleware.ts     # Auth middleware
+│   └── layout.tsx    # Root layout with conditional navigation
+├── middleware.ts     # Auth middleware for session management
 └── utils/
     └── supabase/     # Supabase client utilities
 ```
@@ -78,6 +80,13 @@ The application uses Tailwind CSS v4 with a custom configuration that matches th
 
 For full details, see the [Styling Guide](./Styling-Guide.md).
 
+## Session Management
+
+The application implements secure session management using:
+- HTTP-only cookies (via Supabase Auth)
+- Automatic token refresh via middleware
+- Proper session termination with logout functionality
+
 ## Future Enhancements
 
 1. Add social login providers
@@ -87,3 +96,5 @@ For full details, see the [Styling Guide](./Styling-Guide.md).
 5. Improve form validation
 6. Add remember me functionality
 7. Implement multi-factor authentication
+8. Add session tracking and management
+9. Implement selective session termination (logout from specific devices)

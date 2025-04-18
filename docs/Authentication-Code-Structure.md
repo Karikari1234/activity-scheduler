@@ -202,14 +202,63 @@ export async function login(formData: FormData) {
 
 Purpose: Server action that processes login form submissions, authenticates users via Supabase Auth, and redirects on success.
 
+### Session Management and Logout
+
+#### `src/app/auth/actions.ts`
+```typescript
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { createClient } from "@/utils/supabase/server";
+
+export async function signOut() {
+  const supabase = await createClient();
+  
+  // Sign out the user (defaults to 'global' scope which terminates all sessions)
+  await supabase.auth.signOut();
+  
+  // Revalidate all pages that use the user session
+  revalidatePath("/", "layout");
+  
+  // Redirect to login page
+  redirect("/login");
+}
+```
+
+Purpose: Server action that handles user logout, terminating the session and redirecting to the login page.
+
+#### `src/app/components/LogoutButton.tsx`
+```typescript
+"use client";
+
+import { signOut } from "../auth/actions";
+
+export default function LogoutButton() {
+  return (
+    <form>
+      <button 
+        formAction={signOut}
+        className="text-primary hover:underline font-medium"
+      >
+        Logout
+      </button>
+    </form>
+  );
+}
+```
+
+Purpose: Client component that provides a button to trigger the signOut server action.
+
 ### Protected Routes and Email Confirmation
 
 #### `src/app/dashboard/page.tsx`
 ```tsx
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
+import LogoutButton from "../components/LogoutButton";
 
-export default async function PrivatePage() {
+export default async function DashboardPage() {
   const supabase = await createClient();
 
   const { data, error } = await supabase.auth.getUser();
@@ -217,11 +266,24 @@ export default async function PrivatePage() {
     redirect("/login");
   }
 
-  return <p>Hello {data.user.email}</p>;
+  return (
+    <div className="max-w-default mx-auto p-lg">
+      <header className="mb-xl flex justify-between items-center">
+        <div>
+          <h1 className="text-heading font-bold mb-sm text-text-primary">Dashboard</h1>
+          <p className="text-text-secondary">Welcome, {data.user.email}</p>
+        </div>
+        <div>
+          <LogoutButton />
+        </div>
+      </header>
+      {/* Dashboard content */}
+    </div>
+  );
 }
 ```
 
-Purpose: Server component that checks authentication status and renders protected content only for authenticated users.
+Purpose: Server component that checks authentication status and renders protected content only for authenticated users. Includes logout functionality.
 
 #### `src/app/auth/confirm/route.ts`
 ```typescript
@@ -312,5 +374,11 @@ Purpose: Entry point for Next.js middleware that updates auth sessions and handl
 │  User Fills │     │  Server     │     │   Dashboard Page    │
 │ Login Form  │────▶│  Action     │────▶│ (Protected Content) │
 └─────────────┘     │Authenticates│     └─────────────────────┘
+                    └─────────────┘                │
+                                                   ▼
+┌─────────────┐     ┌─────────────┐     ┌─────────────────────┐
+│ User Clicks │     │  Server     │     │      Login Page     │
+│   Logout    │────▶│  Action     │────▶│  (Session Terminated)│
+└─────────────┘     │Signs Out User│    └─────────────────────┘
                     └─────────────┘
 ```
