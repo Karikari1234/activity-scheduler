@@ -1,108 +1,40 @@
-// src/app/login/page.tsx
-'use client' // This needs to be a client component for form handling
+import { login } from "./actions";
+import Link from "next/link";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase/client' // Use browser client
-
-export default function LogIn() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [message, setMessage] = useState('')
-  const router = useRouter()
-  const supabase = createClient() // Create client instance
-
-  const handleLogIn = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault()
-    setMessage('') // Clear previous messages
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
-
-    if (error) {
-      setMessage(`Login failed: ${error.message}`)
-      console.error('Login Error:', error)
-    } else {
-      // Redirect to dashboard on successful login
-      // Use router.refresh() to ensure server components reload with new auth state
-      router.push('/dashboard')
-      router.refresh()
-    }
-  }
-
+export default function LoginPage() {
   return (
-    <div style={styles.container}>
+    <div style={{ maxWidth: "400px", margin: "50px auto", padding: "20px" }}>
       <h1>Log In</h1>
-      <form onSubmit={handleLogIn} style={styles.form}>
-        <label htmlFor="email" style={styles.label}>Email:</label>
-        <input
-          id="email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-          style={styles.input}
-        />
-        <label htmlFor="password" style={styles.label}>Password:</label>
-        <input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          style={styles.input}
-        />
-        <button type="submit" style={styles.button}>Log In</button>
+      <form>
+        <div style={{ marginBottom: "15px" }}>
+          <label htmlFor="email">Email:</label>
+          <input id="email" name="email" type="email" required style={{ display: "block", width: "100%", padding: "8px", marginTop: "5px" }} />
+        </div>
+        <div style={{ marginBottom: "15px" }}>
+          <label htmlFor="password">Password:</label>
+          <input id="password" name="password" type="password" required style={{ display: "block", width: "100%", padding: "8px", marginTop: "5px" }} />
+        </div>
+        <button 
+          formAction={login}
+          style={{ 
+            padding: "10px 15px",
+            backgroundColor: "#0070f3",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: "pointer",
+            width: "100%"
+          }}
+        >
+          Log in
+        </button>
       </form>
-      {message && <p style={styles.message}>{message}</p>}
-      <p>
-        Need an account? <a href="/signup" style={styles.link}>Sign Up</a>
+      <p style={{ marginTop: "20px", textAlign: "center" }}>
+        Don&apos;t have an account?{" "}
+        <Link href="/signup" style={{ color: "#0070f3", textDecoration: "none" }}>
+          Sign up
+        </Link>
       </p>
     </div>
-  )
+  );
 }
-
-// Reusing styles from SignUp page for consistency
-const styles = {
-  container: {
-    maxWidth: '400px',
-    margin: '50px auto',
-    padding: '20px',
-    border: '1px solid #ccc',
-    borderRadius: '8px',
-    textAlign: 'center' as const,
-  },
-  form: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    gap: '15px',
-    marginBottom: '20px',
-  },
-  label: {
-    fontWeight: 'bold',
-    textAlign: 'left' as const,
-  },
-  input: {
-    padding: '10px',
-    border: '1px solid #ccc',
-    borderRadius: '4px',
-  },
-  button: {
-    padding: '10px 15px',
-    backgroundColor: '#0070f3',
-    color: 'white',
-    border: 'none',
-    borderRadius: '4px',
-    cursor: 'pointer',
-  },
-  message: {
-    marginTop: '15px',
-    color: 'red',
-  },
-    link: {
-        color: '#0070f3',
-        textDecoration: 'none',
-    }
-};
