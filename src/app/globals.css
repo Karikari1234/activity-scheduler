@@ -1,26 +1,215 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Brand Colors */
+  --primary: #E44332;
+  
+  /* Light Theme (Default) */
+  --background: #FFFFFF;
+  --surface: #FAFAFA;
+  --text-primary: #202020;
+  --text-secondary: #808080;
+  --divider: #EEEEEE;
+  --hover: #F5F5F5;
+  
+  /* Priority Colors */
+  --priority-1: #FF5722;
+  --priority-2: #FF9800;
+  --priority-3: #4F9DA6;
+  --priority-4: #808080;
+  
+  /* Button Colors */
+  --button-primary-bg: var(--primary);
+  --button-primary-text: #FFFFFF;
+  --button-secondary-bg: transparent;
+  --button-secondary-border: var(--primary);
+  --button-secondary-text: var(--primary);
+  --button-text-color: var(--primary);
+  
+  /* Input Fields */
+  --input-bg: #FFFFFF;
+  --input-border: #DDDDDD;
+  --input-focus: var(--primary);
+  --input-error: #FF3B30;
+  
+  /* Icons */
+  --icon-inactive: #808080;
+  --icon-active: var(--primary);
 }
 
 @theme inline {
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-foreground: var(--text-primary);
+  --font-sans: var(--font-primary);
+  --font-mono: var(--font-secondary);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
 
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--text-primary);
+  font-family: "Circular", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/* Button Styles */
+.btn-primary {
+  background-color: var(--button-primary-bg);
+  color: var(--button-primary-text);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  transition: background-color 200ms ease-in-out;
+}
+
+.btn-primary:hover {
+  background-color: color-mix(in srgb, var(--button-primary-bg) 90%, black);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+}
+
+.btn-secondary {
+  background-color: var(--button-secondary-bg);
+  color: var(--button-secondary-text);
+  border: 1px solid var(--button-secondary-border);
+  border-radius: 8px;
+  padding: 8px 16px;
+  font-weight: 600;
+  transition: background-color 200ms ease-in-out;
+}
+
+.btn-secondary:hover {
+  background-color: color-mix(in srgb, var(--button-primary-bg) 10%, transparent);
+}
+
+.btn-text {
+  background-color: transparent;
+  color: var(--button-text-color);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-weight: 500;
+  transition: background-color 200ms ease-in-out;
+}
+
+.btn-text:hover {
+  background-color: color-mix(in srgb, var(--button-primary-bg) 10%, transparent);
+}
+
+/* Input Field Styles */
+.input-text {
+  background-color: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  transition: border-color 200ms ease-in-out;
+}
+
+.input-text:focus {
+  border-color: var(--input-focus);
+  outline: none;
+}
+
+.input-text.error {
+  border-color: var(--input-error);
+}
+
+/* Card Styles */
+.task-item {
+  background-color: var(--background);
+  border-bottom: 1px solid var(--divider);
+  padding: 12px 16px;
+  transition: background-color 200ms ease-in-out;
+}
+
+.task-item:hover {
+  background-color: var(--hover);
+}
+
+.project-card {
+  background-color: var(--background);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  padding: 16px;
+}
+
+/* Navigation & Menus */
+.sidebar {
+  background-color: var(--surface);
+  color: var(--text-primary);
+}
+
+.sidebar-item.active {
+  border-left: 3px solid var(--primary);
+}
+
+.sidebar-item:hover {
+  background-color: var(--hover);
+}
+
+.dropdown-menu {
+  background-color: var(--background);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.dropdown-menu-item {
+  padding: 8px 16px;
+}
+
+.dropdown-menu-item:hover {
+  background-color: var(--hover);
+}
+
+/* Typography */
+.text-xs {
+  font-size: 12px;
+}
+
+.text-sm {
+  font-size: 14px;
+}
+
+.text-base {
+  font-size: 16px;
+}
+
+.text-subtitle {
+  font-size: 18px;
+}
+
+.text-title {
+  font-size: 20px;
+}
+
+.text-heading {
+  font-size: 24px;
+}
+
+.text-large-heading {
+  font-size: 32px;
+}
+
+.font-regular {
+  font-weight: 400;
+}
+
+.font-medium {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 600;
+}
+
+.font-bold {
+  font-weight: 700;
+}
+
+/* Accessibility */
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }

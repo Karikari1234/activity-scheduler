@@ -1,20 +1,15 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import Link from "next/link"; // Import Link
+import Link from "next/link"; 
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  variable: "--font-inter",
 });
 
 export const metadata: Metadata = {
-  title: "Daily Scheduler",
+  title: "Activity Scheduler",
   description: "Your daily scheduling application",
 };
 
@@ -25,17 +20,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <nav style={{ padding: '1rem', borderBottom: '1px solid #eee', marginBottom: '1rem', display: 'flex', gap: '1rem' }}>
+      <body className={`${inter.variable} font-primary bg-background text-text-primary antialiased`}>
+        <nav className="p-md border-b border-divider mb-md flex gap-md">
            {/* We will conditionally show these later based on auth state */}
-          <Link href="/">Home</Link>
-          <Link href="/login">Login</Link>
-          <Link href="/signup">Sign Up</Link>
-          <Link href="/dashboard">Dashboard</Link> {/* Link to dashboard */}
+          <Link href="/" className="text-primary hover:underline font-medium">Home</Link>
+          <Link href="/login" className="text-primary hover:underline font-medium">Login</Link>
+          <Link href="/signup" className="text-primary hover:underline font-medium">Sign Up</Link>
+          <Link href="/dashboard" className="text-primary hover:underline font-medium">Dashboard</Link>
         </nav>
-        <main>{children}</main>
+        <main className="container mx-auto px-md">{children}</main>
       </body>
     </html>
   );
