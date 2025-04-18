@@ -42,6 +42,7 @@ export default async function RootLayout({
           {user && (
             <>
               <Link href="/dashboard" className="text-primary hover:underline font-medium">Dashboard</Link>
+              <Link href="/profile" className="text-primary hover:underline font-medium">Profile</Link>
               <div className="ml-auto">
                 <LogoutButton />
               </div>
