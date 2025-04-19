@@ -27,29 +27,58 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} font-primary bg-background text-text-primary antialiased`}>
-        <nav className="p-md border-b border-divider mb-md flex gap-md">
-          <Link href="/" className="text-primary hover:underline font-medium">Home</Link>
-          
-          {/* Show these links when user is NOT authenticated */}
-          {!user && (
-            <>
-              <Link href="/login" className="text-primary hover:underline font-medium">Login</Link>
-              <Link href="/signup" className="text-primary hover:underline font-medium">Sign Up</Link>
-            </>
-          )}
-          
-          {/* Show these links when user IS authenticated */}
-          {user && (
-            <>
-              <Link href="/dashboard" className="text-primary hover:underline font-medium">Dashboard</Link>
-              <Link href="/profile" className="text-primary hover:underline font-medium">Profile</Link>
-              <div className="ml-auto">
-                <LogoutButton />
-              </div>
-            </>
-          )}
-        </nav>
-        <main className="container mx-auto px-md">{children}</main>
+        <header className="border-b border-divider">
+          <div className="container mx-auto flex h-16 items-center px-4">
+            <Link href="/" className="text-xl font-bold text-primary mr-6">
+              Activity Scheduler
+            </Link>
+            <nav className="flex gap-6">
+              <Link href="/" className="text-sm font-medium hover:text-primary">
+                Home
+              </Link>
+              
+              {/* Show these links when user is authenticated */}
+              {user && (
+                <>
+                  <Link href="/dashboard" className="text-sm font-medium hover:text-primary">
+                    Dashboard
+                  </Link>
+                  <Link href="/schedules" className="text-sm font-medium hover:text-primary">
+                    Schedules
+                  </Link>
+                  <Link href="/schedules/new" className="text-sm font-medium hover:text-primary">
+                    New Schedule
+                  </Link>
+                </>
+              )}
+            </nav>
+            
+            <div className="ml-auto flex items-center gap-4">
+              {/* Show these links when user is NOT authenticated */}
+              {!user && (
+                <>
+                  <Link href="/login" className="text-sm font-medium hover:text-primary">
+                    Login
+                  </Link>
+                  <Link href="/signup" className="text-sm font-medium hover:text-primary">
+                    Sign Up
+                  </Link>
+                </>
+              )}
+              
+              {/* Show these links when user IS authenticated */}
+              {user && (
+                <>
+                  <Link href="/profile" className="text-sm font-medium hover:text-primary">
+                    Profile
+                  </Link>
+                  <LogoutButton />
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+        <main className="container mx-auto py-6 px-4">{children}</main>
       </body>
     </html>
   );
