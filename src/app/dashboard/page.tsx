@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/utils/supabase/server";
 import LogoutButton from "../components/LogoutButton";
+import Link from "next/link";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -23,22 +24,22 @@ export default async function DashboardPage() {
       </header>
       
       <div className="grid grid-cols-1 md:grid-cols-3 gap-lg mb-xl">
-        <div className="project-card">
+        <div className="project-card bg-surface p-md rounded-md">
           <h2 className="text-title font-semibold mb-sm text-text-primary">Today&apos;s Tasks</h2>
           <p className="text-text-secondary">You have no tasks scheduled for today.</p>
-          <button className="btn-text mt-md">Add Task</button>
+          <Link href="/schedules/new" className="text-primary inline-block hover:underline mt-md">Add Schedule</Link>
         </div>
         
-        <div className="project-card">
+        <div className="project-card bg-surface p-md rounded-md">
           <h2 className="text-title font-semibold mb-sm text-text-primary">Upcoming</h2>
-          <p className="text-text-secondary">No upcoming tasks in the next 7 days.</p>
-          <button className="btn-text mt-md">View Calendar</button>
+          <p className="text-text-secondary">No upcoming schedules in the next 7 days.</p>
+          <Link href="/schedules" className="text-primary inline-block hover:underline mt-md">View Schedules</Link>
         </div>
         
-        <div className="project-card">
-          <h2 className="text-title font-semibold mb-sm text-text-primary">Projects</h2>
-          <p className="text-text-secondary">You have no active projects.</p>
-          <button className="btn-text mt-md">Create Project</button>
+        <div className="project-card bg-surface p-md rounded-md">
+          <h2 className="text-title font-semibold mb-sm text-text-primary">Activities</h2>
+          <p className="text-text-secondary">Manage your activities with rich text formatting.</p>
+          <Link href="/schedules" className="text-primary inline-block hover:underline mt-md">Manage Activities</Link>
         </div>
       </div>
       

@@ -1,0 +1,63 @@
+/* Rich Text Editor Styles */
+@import "tailwindcss";
+
+.rich-text-content {
+  /* Content area styles */
+  @apply min-h-[100px];
+}
+
+.rich-text-content p {
+  @apply mb-2;
+}
+
+.rich-text-content ul {
+  @apply list-disc pl-6 mb-2;
+}
+
+.rich-text-content ol {
+  @apply list-decimal pl-6 mb-2;
+}
+
+.rich-text-content li {
+  @apply mb-2;
+}
+
+.rich-text-content li p {
+  @apply mb-0;
+}
+
+.rich-text-content strong {
+  @apply font-bold;
+}
+
+.rich-text-content em {
+  @apply italic;
+}
+
+/* Placeholder styling */
+.rich-text-content p.is-editor-empty:first-of-type::before {
+  @apply float-left h-0 pointer-events-none;
+  content: attr(data-placeholder);
+  color: var(--text-secondary);
+  opacity: 0.7;
+}
+
+/* Editor border focus states - consistent with app styling */
+.ProseMirror:focus {
+  @apply outline-none ring-1;
+}
+
+/* Display component specific styles */
+.rich-text-display p {
+  @apply mb-2;
+}
+
+/* Ensure consistent text colors */
+.rich-text-display {
+  color: var(--text-primary);
+}
+
+.rich-text-display ul li::marker,
+.rich-text-display ol li::marker {
+  color: var(--primary);
+}

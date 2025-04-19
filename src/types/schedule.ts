@@ -8,6 +8,43 @@ export interface TimeRange {
 }
 
 /**
+ * Rich Text Content Types for Tiptap
+ */
+export interface TextNode {
+  type: 'text';
+  text: string;
+  marks?: Array<{
+    type: string;
+    attrs?: Record<string, unknown>;
+  }>;
+}
+
+export interface ParagraphNode {
+  type: 'paragraph';
+  content?: Array<TextNode>;
+}
+
+export interface BulletListNode {
+  type: 'bulletList';
+  content: Array<ListItemNode>;
+}
+
+export interface OrderedListNode {
+  type: 'orderedList';
+  content: Array<ListItemNode>;
+}
+
+export interface ListItemNode {
+  type: 'listItem';
+  content: Array<ParagraphNode>;
+}
+
+export interface RichTextContent {
+  type: 'doc';
+  content: Array<ParagraphNode | BulletListNode | OrderedListNode>;
+}
+
+/**
  * Main Schedule interface representing a row in the schedules table
  */
 export interface Schedule {
@@ -15,8 +52,8 @@ export interface Schedule {
   user_id: string;
   schedule_date: string; // ISO format date string YYYY-MM-DD
   time_range: TimeRange;
-  place: string | null;
-  activity: string | null;
+  place: RichTextContent | null;
+  activity: RichTextContent | null;
   comment_link: string | null;
   created_at: string; // ISO datetime
   updated_at: string; // ISO datetime

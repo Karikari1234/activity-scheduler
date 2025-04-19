@@ -7,7 +7,30 @@ import {
   NewSchedule,
   UpdateSchedule,
   ScheduleQueryParams,
+  RichTextContent,
 } from "@/types/schedule";
+
+/**
+ * Parse and sanitize rich text content
+ */
+function parseRichTextContent(content: string | null): RichTextContent | null {
+  if (!content) return null;
+  
+  try {
+    // Parse the JSON string
+    const parsed = JSON.parse(content);
+    
+    // Basic validation to ensure it follows the expected structure
+    if (typeof parsed !== 'object' || !parsed.type || parsed.type !== 'doc' || !Array.isArray(parsed.content)) {
+      return null;
+    }
+    
+    return parsed as RichTextContent;
+  } catch (error) {
+    console.error('Failed to parse rich text content:', error);
+    return null;
+  }
+}
 
 /**
  * Create a new schedule entry
@@ -25,6 +48,9 @@ export async function createSchedule(formData: FormData) {
   }
 
   // Parse form data
+  const placeContent = parseRichTextContent(formData.get("place") as string);
+  const activityContent = parseRichTextContent(formData.get("activity") as string);
+  
   const scheduleData: NewSchedule = {
     user_id: user.id,
     schedule_date: formData.get("schedule_date") as string,
@@ -32,8 +58,8 @@ export async function createSchedule(formData: FormData) {
       start: formData.get("time_start") as string,
       end: formData.get("time_end") as string,
     },
-    place: (formData.get("place") as string) || null,
-    activity: (formData.get("activity") as string) || null,
+    place: placeContent,
+    activity: activityContent,
     comment_link: (formData.get("comment_link") as string) || null,
   };
 
@@ -177,15 +203,15 @@ export async function updateSchedule(id: string, formData: FormData) {
     };
   }
 
-  // Get other fields
-  const place = formData.get("place");
-  if (place !== null) {
-    updates.place = place as string;
+  // Parse rich text fields
+  const placeFormValue = formData.get("place");
+  if (placeFormValue !== null) {
+    updates.place = parseRichTextContent(placeFormValue as string);
   }
 
-  const activity = formData.get("activity");
-  if (activity !== null) {
-    updates.activity = activity as string;
+  const activityFormValue = formData.get("activity");
+  if (activityFormValue !== null) {
+    updates.activity = parseRichTextContent(activityFormValue as string);
   }
 
   const commentLink = formData.get("comment_link");
