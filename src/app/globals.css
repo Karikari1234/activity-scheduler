@@ -131,6 +131,7 @@ body {
 
 .btn-primary:hover {
   background-color: color-mix(in srgb, var(--button-primary-bg) 90%, black);
+  cursor: pointer;
 }
 
 .btn-primary:disabled {
