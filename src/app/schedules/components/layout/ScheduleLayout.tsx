@@ -4,22 +4,11 @@
 import { useState, useCallback } from "react";
 import ScheduleManager from "./ScheduleManager";
 import SchedulePreview from "./SchedulePreview";
+import { Schedule } from "@/types/schedule";
 
 type ViewState = "default" | "full-preview" | "collapsed-preview";
 
-// Define the Schedule type based on your actual data structure
-// This should match your actual data model
-interface Schedule {
-  id: string;
-  schedule_date: string;
-  time_range: {
-    start: string;
-    end: string;
-  };
-  place: any; // Rich text content
-  activity: any; // Rich text content
-  comment_link?: string;
-}
+
 
 export default function ScheduleLayout({
   children,
