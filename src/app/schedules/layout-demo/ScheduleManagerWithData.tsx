@@ -50,31 +50,33 @@ export default function ScheduleManagerWithData({
   };
 
   return (
-    <div className="h-full p-md">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-heading font-bold text-text-primary mb-lg">Schedule Manager</h1>
+    <div className="h-full p-6 sm:p-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-heading font-bold text-primary mb-8">Schedule Manager</h1>
         
-        <div className="flex justify-between items-center mb-lg flex-wrap gap-md">
+        <div className="flex justify-between items-center mb-8 flex-wrap gap-md">
           {/* Add Schedule Button with Modal */}
           <ScheduleFormModal 
-            trigger={<Button>Add New Schedule</Button>}
+            trigger={<Button className="bg-primary text-white hover:bg-primary-dark font-medium shadow-sm">Add New Schedule</Button>}
             onSuccess={handleScheduleCreated}
           />
           
-          <div className="flex items-center gap-sm">
+          <div className="flex items-center gap-sm rounded-md shadow-sm bg-surface p-1">
             <div className="flex items-center gap-sm">
-              <label htmlFor="filterDate" className="text-text-secondary font-medium">Filter by Date:</label>
-              <Input 
-                type="date" 
-                id="filterDate" 
-                className="w-auto"
-                value={filterDate}
-                onChange={handleFilterChange}
-              />
+              <label htmlFor="filterDate" className="text-text-secondary font-medium px-1">Filter by Date:</label>
+              <div className="relative">
+                <Input 
+                  type="date" 
+                  id="filterDate" 
+                  className="w-auto border-divider focus:border-primary focus:ring-primary/20 shadow-inner"
+                  value={filterDate}
+                  onChange={handleFilterChange}
+                />
+              </div>
               <Button 
                 variant="outline" 
                 size="sm" 
-                className="h-9 w-9 p-0" 
+                className="h-8 w-8 p-0 rounded-full shadow-sm hover:shadow text-text-secondary" 
                 title="Clear Filter"
                 onClick={handleFilterClear}
                 disabled={!filterDate}
@@ -85,45 +87,49 @@ export default function ScheduleManagerWithData({
           </div>
         </div>
         
-        <div className="space-y-md">
+        <div className="space-y-10">
           {filteredSchedules.length > 0 ? (
             filteredSchedules.map((schedule) => (
               <div 
                 key={schedule.id} 
-                className="bg-surface p-md rounded-md shadow-sm hover:shadow transition-shadow cursor-pointer"
+                className="bg-white p-0 rounded-md shadow-md hover:shadow-lg transition-all cursor-pointer overflow-hidden group mb-8"
                 onClick={() => onScheduleSelect(schedule)}
               >
-                <div className="flex justify-between">
-                  <div>
-                    <h2 className="text-subtitle font-medium text-text-primary">
-                      {new Date(schedule.schedule_date).toLocaleDateString('en-US', {
-                        weekday: 'short',
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </h2>
-                    <p className="text-text-secondary">
-                      {schedule.time_range.start} - {schedule.time_range.end}
-                    </p>
-                  </div>
-                  
-                  <div className="flex items-center">
-                    <span className="text-text-secondary">›</span>
+                <div className="border-b border-gray-100 bg-gradient-to-r from-primary-light/30 to-transparent p-md">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h2 className="text-subtitle font-semibold text-primary">
+                        {new Date(schedule.schedule_date).toLocaleDateString('en-US', {
+                          weekday: 'short',
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                        })}
+                      </h2>
+                      <p className="text-text-secondary font-medium mt-1">
+                        {schedule.time_range.start} - {schedule.time_range.end}
+                      </p>
+                    </div>
+                    
+                    <div className="flex items-center">
+                      <Button variant="outline" size="sm" className="text-primary border-primary/20 bg-white hover:bg-primary-light hover:text-primary p-1 h-8 w-8 rounded-full shadow-sm">
+                        <span className="text-xl">›</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
                 
-                <div className="mt-sm grid grid-cols-1 md:grid-cols-2 gap-md">
-                  <div>
-                    <h3 className="text-sm font-medium text-text-secondary mb-xs">Place</h3>
-                    <div className="line-clamp-2">
+                <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-gray-50/50 p-3 rounded-md">
+                    <h3 className="text-sm font-medium text-primary uppercase tracking-wide mb-2">Venue</h3>
+                    <div className="text-text-primary">
                       <RichTextDisplay content={schedule.place} />
                     </div>
                   </div>
                   
-                  <div>
-                    <h3 className="text-sm font-medium text-text-secondary mb-xs">Activity</h3>
-                    <div className="line-clamp-2">
+                  <div className="bg-gray-50/50 p-3 rounded-md">
+                    <h3 className="text-sm font-medium text-primary uppercase tracking-wide mb-2">Agenda</h3>
+                    <div className="text-text-primary">
                       <RichTextDisplay content={schedule.activity} />
                     </div>
                   </div>
@@ -131,10 +137,28 @@ export default function ScheduleManagerWithData({
               </div>
             ))
           ) : (
-            <div className="bg-surface p-lg rounded-md shadow-sm text-center text-text-secondary">
-              {filterDate ? 
-                "No schedules found for the selected date." : 
-                "No schedules found. Add one to get started!"}
+            <div className="bg-white p-8 rounded-md shadow-md text-center">
+              <div className="py-8 px-4 text-center">
+                {filterDate ? (
+                  <>
+                    <h3 className="text-lg font-medium text-gray-500 mb-2">No schedules found</h3>
+                    <p className="text-text-secondary">
+                      No meetings scheduled for {new Date(filterDate).toLocaleDateString('en-US', {year: 'numeric', month: 'short', day: 'numeric'})}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <h3 className="text-lg font-medium text-gray-500 mb-2">No schedules yet</h3>
+                    <p className="text-text-secondary mb-4">
+                      Get started by creating your first schedule
+                    </p>
+                    <ScheduleFormModal 
+                      trigger={<Button className="bg-primary text-white hover:bg-primary-dark font-medium shadow-sm">Add New Schedule</Button>}
+                      onSuccess={handleScheduleCreated}
+                    />
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>

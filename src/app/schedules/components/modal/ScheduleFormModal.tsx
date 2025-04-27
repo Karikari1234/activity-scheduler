@@ -36,6 +36,9 @@ interface ScheduleFormModalProps {
   isEdit?: boolean;
   trigger: React.ReactNode;
   onSuccess?: () => void;
+  // Added props for external control
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ScheduleFormModal({
@@ -43,9 +46,16 @@ export function ScheduleFormModal({
   isEdit = false,
   trigger,
   onSuccess,
+  open: controlledOpen,
+  onOpenChange: setControlledOpen,
 }: ScheduleFormModalProps) {
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  
+  // Determine if we're using controlled or uncontrolled mode
+  const isControlled = controlledOpen !== undefined && setControlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = isControlled ? setControlledOpen : setInternalOpen;
   
   // State for date and times
   const [date, setDate] = React.useState<Date | undefined>(
@@ -86,15 +96,37 @@ export function ScheduleFormModal({
     },
   });
 
-  // Reset errors when modal opens/closes
+  // Reset form and state when schedule prop changes or modal opens/closes
   React.useEffect(() => {
     if (open) {
+      // Reset errors
       setDateError(null);
       setTimeError(null);
       setPlaceError(null);
       setActivityError(null);
+      
+      // Update form values when schedule changes
+      if (schedule) {
+        form.reset({
+          commentLink: schedule.comment_link || "",
+        });
+        setDate(new Date(schedule.schedule_date));
+        setStartTime(new Date(`1970-01-01T${schedule.time_range.start}:00`));
+        setEndTime(new Date(`1970-01-01T${schedule.time_range.end}:00`));
+        setPlaceContent(schedule.place);
+        setActivityContent(schedule.activity);
+      } else {
+        form.reset({
+          commentLink: "",
+        });
+        setDate(new Date());
+        setStartTime(new Date());
+        setEndTime(new Date(new Date().setHours(new Date().getHours() + 1)));
+        setPlaceContent(null);
+        setActivityContent(null);
+      }
     }
-  }, [open]);
+  }, [open, schedule, form]);
 
   // Form submission handler
   const onSubmit = async (values: FormValues) => {

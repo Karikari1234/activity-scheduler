@@ -10,18 +10,22 @@ import RichTextDisplay from "@/app/components/rich-text/RichTextDisplay";
 import { Calendar } from "lucide-react";
 import { Schedule } from "@/types/schedule";
 
-
-
 interface ScheduleManagerProps {
   onDateChange?: (date: string | undefined) => void;
   onSchedulesUpdate?: (schedules: Schedule[]) => void;
+  // New props for modal control
+  onAddSchedule?: () => void;
+  onEditSchedule?: (schedule: Schedule) => void;
 }
 
 export default function ScheduleManager({
   onDateChange,
   onSchedulesUpdate,
+  onAddSchedule,
+  onEditSchedule,
 }: ScheduleManagerProps) {
-  const [filterDate, setFilterDate] = useState<string>("");
+  const today = new Date().toISOString().split("T")[0];
+  const [filterDate, setFilterDate] = useState<string>(today);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
 
@@ -119,6 +123,22 @@ export default function ScheduleManager({
       onDateChange(undefined);
     }
   };
+  
+  // Handle clicking the Add New Schedule button
+  const handleAddClick = (e: React.MouseEvent) => {
+    if (onAddSchedule) {
+      e.preventDefault();
+      onAddSchedule();
+    }
+  };
+  
+  // Handle clicking the View Details button
+  const handleViewDetailsClick = (e: React.MouseEvent, schedule: Schedule) => {
+    if (onEditSchedule) {
+      e.preventDefault();
+      onEditSchedule(schedule);
+    }
+  };
 
   return (
     <div className="h-full p-md">
@@ -127,12 +147,21 @@ export default function ScheduleManager({
           Schedule Manager
         </h1>
 
-        <div className="flex justify-between items-center mb-lg flex-wrap gap-md">
-          <Link href="/schedules/new">
-            <Button className="bg-primary text-white hover:bg-primary-dark">
+        <div className="flex justify-between items-center mb-lg flex-wrap gap-md mb-4">
+          {onAddSchedule ? (
+            <Button 
+              className="bg-primary text-white hover:bg-primary-dark"
+              onClick={handleAddClick}
+            >
               Add New Schedule
             </Button>
-          </Link>
+          ) : (
+            <Link href="/schedules/new">
+              <Button className="bg-primary text-white hover:bg-primary-dark">
+                Add New Schedule
+              </Button>
+            </Link>
+          )}
 
           <div className="flex items-center gap-sm">
             <div className="flex items-center gap-sm">
@@ -178,61 +207,156 @@ export default function ScheduleManager({
                   ? `No schedules found for ${formatDate(filterDate)}.`
                   : "No schedules found. Add one to get started!"}
               </p>
-              <Link
-                href="/schedules/new"
-                className="text-primary hover:underline mt-md inline-block"
-              >
-                Create your first schedule
-              </Link>
+              {onAddSchedule ? (
+                <a 
+                  href="#" 
+                  onClick={handleAddClick} 
+                  className="text-primary hover:underline mt-md inline-block"
+                >
+                  Create your first schedule
+                </a>
+              ) : (
+                <Link
+                  href="/schedules/new"
+                  className="text-primary hover:underline mt-md inline-block"
+                >
+                  Create your first schedule
+                </Link>
+              )}
             </div>
           ) : (
             schedules.map((schedule) => (
               <div
                 key={schedule.id}
-                className="bg-surface rounded-md overflow-hidden border border-divider hover:shadow-md transition-shadow"
+                className="bg-white rounded-lg overflow-hidden border border-gray-200 hover:shadow-lg transition-all duration-300 mb-4"
               >
                 <div className="flex flex-col">
-                  <div className="bg-primary-light px-md py-sm border-b border-divider">
-                    <h2 className="text-lg font-medium text-primary">
-                      {formatDate(schedule.schedule_date)}
-                    </h2>
-                    <p className="text-text-secondary font-medium">
-                      {formatTime(schedule.time_range.start)} -{" "}
-                      {formatTime(schedule.time_range.end)}
-                    </p>
+                  <div className="bg-red-50 px-4 py-3 border-b border-gray-200">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h2 className="text-lg font-semibold text-red-700">
+                          {formatDate(schedule.schedule_date)}
+                        </h2>
+                        <p className="text-gray-600 flex items-center">
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                          {formatTime(schedule.time_range.start)} -{" "}
+                          {formatTime(schedule.time_range.end)}
+                        </p>
+                      </div>
+                      <div className="hidden md:block">
+                        <span className="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                          Scheduled
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="p-md">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-md">
-                      <div>
-                        <h3 className="text-sm font-medium text-text-secondary mb-xs uppercase tracking-wide">
+                  <div className="p-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center">
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
                           Place
                         </h3>
-                        <div className="prose prose-sm max-w-none text-text-primary">
+                        <div className="prose prose-sm max-w-none text-gray-700 bg-gray-50 p-3 rounded-md">
                           <RichTextDisplay content={schedule.place} />
                         </div>
                       </div>
 
-                      <div>
-                        <h3 className="text-sm font-medium text-text-secondary mb-xs uppercase tracking-wide">
+                      <div className="space-y-2">
+                        <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center">
+                          <svg
+                            className="w-4 h-4 mr-1"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M6 6V5a3 3 0 013-3h2a3 3 0 013 3v1h2a2 2 0 012 2v3.57A22.952 22.952 0 0110 13a22.95 22.95 0 01-8-1.43V8a2 2 0 012-2h2zm2-1a1 1 0 011-1h2a1 1 0 011 1v1H8V5zm1 5a1 1 0 011-1h.01a1 1 0 110 2H10a1 1 0 01-1-1z"
+                              clipRule="evenodd"
+                            />
+                            <path d="M2 13.692V16a2 2 0 002 2h12a2 2 0 002-2v-2.308A24.974 24.974 0 0110 15c-2.796 0-5.487-.46-8-1.308z" />
+                          </svg>
                           Activity
                         </h3>
-                        <div className="prose prose-sm max-w-none text-text-primary">
+                        <div className="prose prose-sm max-w-none text-gray-700 bg-gray-50 p-3 rounded-md">
                           <RichTextDisplay content={schedule.activity} />
                         </div>
                       </div>
                     </div>
 
-                    <div className="mt-md flex justify-end">
-                      <Link href={`/schedules/${schedule.id}`}>
+                    <div className="mt-6 flex justify-end">
+                      {onEditSchedule ? (
                         <Button
                           variant="outline"
                           size="sm"
-                          className="text-primary"
+                          className="text-red-600 hover:text-red-800 hover:bg-red-50 border-red-300 hover:border-red-500 transition-colors flex items-center gap-1"
+                          onClick={(e) => handleViewDetailsClick(e, schedule)}
                         >
-                          View Details →
+                          View Details
+                          <svg
+                            className="w-3.5 h-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M14 5l7 7m0 0l-7 7m7-7H3"
+                            />
+                          </svg>
                         </Button>
-                      </Link>
+                      ) : (
+                        <Link href={`/schedules/${schedule.id}`}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-800 hover:bg-red-50 border-red-300 hover:border-red-500 transition-colors flex items-center gap-1"
+                          >
+                            View Details
+                            <svg
+                              className="w-3.5 h-3.5"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M14 5l7 7m0 0l-7 7m7-7H3"
+                              />
+                            </svg>
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>

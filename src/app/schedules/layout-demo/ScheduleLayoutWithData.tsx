@@ -23,7 +23,7 @@ export function ScheduleLayoutWithData({ schedules }: ScheduleLayoutWithDataProp
   };
 
   return (
-    <div className="flex w-full min-h-[calc(100vh-4rem)] transition-all duration-300 ease-in-out">
+    <div className="flex w-full min-h-[calc(100vh-10rem)] transition-all duration-300 ease-in-out bg-background">
       <div
         className={`transition-all duration-300 ease-in-out overflow-y-auto ${
           viewState === "full-preview"
