@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 "use client";
 
 import * as React from "react";
@@ -25,7 +26,8 @@ import { RichTextEditor } from "@/app/components/rich-text";
 import { TimeRangePicker } from "./TimeRangePicker";
 import { DatePickerWithCalendar } from "./DatePickerWithCalendar";
 import { Schedule, RichTextContent } from "@/types/schedule";
-import { createSchedule, updateSchedule } from "@/app/schedules/actions";
+import { useScheduleStore } from "@/stores/scheduleStore";
+import { useScheduleUIStore } from "@/stores/scheduleUIStore";
 
 interface FormValues {
   commentLink: string;
@@ -36,7 +38,6 @@ interface ScheduleFormModalProps {
   isEdit?: boolean;
   trigger: React.ReactNode;
   onSuccess?: () => void;
-  // Added props for external control
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
 }
@@ -49,6 +50,8 @@ export function ScheduleFormModal({
   open: controlledOpen,
   onOpenChange: setControlledOpen,
 }: ScheduleFormModalProps) {
+  const { createSchedule, updateSchedule, loading, error } = useScheduleStore();
+  
   const [internalOpen, setInternalOpen] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
@@ -201,17 +204,20 @@ export function ScheduleFormModal({
         formData.append("comment_link", values.commentLink);
       }
       
+      let result;
       if (isEdit && schedule) {
-        // Update existing schedule
-        await updateSchedule(schedule.id, formData);
+        // Update existing schedule using our store action
+        result = await updateSchedule(schedule.id, formData);
       } else {
-        // Create new schedule
-        await createSchedule(formData);
+        // Create new schedule using our store action
+        result = await createSchedule(formData);
       }
       
-      // Close modal and trigger success callback
-      setOpen(false);
-      if (onSuccess) onSuccess();
+      if (result) {
+        // Close modal and trigger success callback
+        setOpen(false);
+        if (onSuccess) onSuccess();
+      }
       
     } catch (error) {
       console.error("Error submitting form:", error);
@@ -232,6 +238,12 @@ export function ScheduleFormModal({
               : "Create a new schedule for your activities."}
           </DialogDescription>
         </DialogHeader>
+
+        {error && (
+          <div className="bg-red-50 p-3 rounded-md mb-4">
+            <p className="text-red-600 text-sm">{error}</p>
+          </div>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
@@ -313,8 +325,8 @@ export function ScheduleFormModal({
               >
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? 'Saving...' : isEdit ? 'Update Schedule' : 'Create Schedule'}
+              <Button type="submit" disabled={isSubmitting || loading}>
+                {isSubmitting || loading ? 'Saving...' : isEdit ? 'Update Schedule' : 'Create Schedule'}
               </Button>
             </DialogFooter>
           </form>

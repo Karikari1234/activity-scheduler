@@ -1,14 +1,14 @@
 /* eslint-disable */
 "use client";
 
-import { useState, useCallback } from "react";
+import { useEffect } from "react";
 import ScheduleManager from "./ScheduleManager";
 import SchedulePreview from "./SchedulePreview";
 import { Schedule } from "@/types/schedule";
 import { ScheduleFormModal } from "../modal";
 import { Button } from "@/components/ui/button";
-
-type ViewState = "default" | "full-preview" | "collapsed-preview";
+import { useScheduleStore } from "@/stores/scheduleStore";
+import { useScheduleUIStore } from "@/stores/scheduleUIStore";
 
 export default function ScheduleLayout({
   children,
@@ -17,46 +17,50 @@ export default function ScheduleLayout({
   children?: React.ReactNode;
   customManager?: React.ReactNode;
 }) {
-  const [viewState, setViewState] = useState<ViewState>("default");
-  const [selectedDate, setSelectedDate] = useState<string | undefined>(undefined);
-  const [filteredSchedules, setFilteredSchedules] = useState<Schedule[]>([]);
-  
-  // Modal state
-  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
-  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | undefined>(undefined);
-  const [isEditMode, setIsEditMode] = useState<boolean>(false);
+  // Get state and actions from Zustand stores
+  const { schedules, fetchSchedules, setFilterDate, filterDate } =
+    useScheduleStore();
 
-  const handleViewStateChange = useCallback((newState: ViewState) => {
-    setViewState(newState);
-  }, []);
+  const {
+    viewState,
+    setViewState,
+    isModalOpen,
+    selectedSchedule,
+    isEditMode,
+    openAddModal,
+    openEditModal,
+    closeModal,
+  } = useScheduleUIStore();
 
-  const handleDateChange = useCallback((date: string | undefined) => {
-    setSelectedDate(date);
-  }, []);
+  // Load schedules on mount and when filterDate changes
+  useEffect(() => {
+    if (filterDate) {
+      fetchSchedules({
+        startDate: filterDate,
+        endDate: filterDate,
+      });
+    } else {
+      fetchSchedules({ limit: 20 });
+    }
+  }, [filterDate, fetchSchedules]);
 
-  // Use useCallback to prevent recreation of this function on each render
-  const updateFilteredSchedules = useCallback((schedules: Schedule[]) => {
-    setFilteredSchedules(schedules);
-  }, []);
-  
-  // Modal handlers
-  const handleOpenAddModal = useCallback(() => {
-    setSelectedSchedule(undefined);
-    setIsEditMode(false);
-    setIsModalOpen(true);
-  }, []);
-  
-  const handleOpenEditModal = useCallback((schedule: Schedule) => {
-    setSelectedSchedule(schedule);
-    setIsEditMode(true);
-    setIsModalOpen(true);
-  }, []);
-  
-  const handleModalSuccess = useCallback(() => {
-    // Refresh the schedules list
-    console.log("Schedule created or updated successfully");
-    // This would typically trigger a refresh of the schedules list
-  }, []);
+  // Handle date changes from child components
+  const handleDateChange = (date: string | undefined) => {
+    setFilterDate(date || null);
+  };
+
+  // Handle modal success (schedule created or updated)
+  const handleModalSuccess = () => {
+    // Refresh schedules after successful operation
+    if (filterDate) {
+      fetchSchedules({
+        startDate: filterDate,
+        endDate: filterDate,
+      });
+    } else {
+      fetchSchedules({ limit: 20 });
+    }
+  };
 
   return (
     <div className="flex w-full min-h-[calc(100vh-7rem)] transition-all duration-300 ease-in-out bg-gray-50">
@@ -72,12 +76,7 @@ export default function ScheduleLayout({
         {customManager ? (
           customManager
         ) : (
-          <ScheduleManager 
-            onDateChange={handleDateChange} 
-            onSchedulesUpdate={updateFilteredSchedules}
-            onAddSchedule={handleOpenAddModal}
-            onEditSchedule={handleOpenEditModal}
-          />
+          <ScheduleManager onDateChange={handleDateChange} />
         )}
       </div>
       <div
@@ -90,21 +89,21 @@ export default function ScheduleLayout({
         }`}
       >
         <SchedulePreview
-          onViewStateChange={handleViewStateChange}
+          onViewStateChange={setViewState}
           currentViewState={viewState}
-          selectedDate={selectedDate}
-          schedules={filteredSchedules}
+          selectedDate={filterDate || undefined}
+          schedules={schedules}
         />
       </div>
-      
+
       {/* Schedule Form Modal - loaded once in the layout */}
       <ScheduleFormModal
         isEdit={isEditMode}
-        schedule={selectedSchedule}
+        schedule={selectedSchedule || undefined}
         trigger={<Button className="hidden">Hidden Trigger</Button>}
         onSuccess={handleModalSuccess}
         open={isModalOpen}
-        onOpenChange={setIsModalOpen}
+        onOpenChange={closeModal}
       />
     </div>
   );

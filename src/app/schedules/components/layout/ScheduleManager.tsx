@@ -1,33 +1,35 @@
 /* eslint-disable */
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import Link from "next/link";
-import { getSchedules } from "../../actions";
 import RichTextDisplay from "@/app/components/rich-text/RichTextDisplay";
 import { Calendar } from "lucide-react";
-import { Schedule } from "@/types/schedule";
+import { useScheduleStore } from "@/stores/scheduleStore";
+import { useScheduleUIStore } from "@/stores/scheduleUIStore";
 
 interface ScheduleManagerProps {
   onDateChange?: (date: string | undefined) => void;
-  onSchedulesUpdate?: (schedules: Schedule[]) => void;
-  // New props for modal control
-  onAddSchedule?: () => void;
-  onEditSchedule?: (schedule: Schedule) => void;
 }
 
 export default function ScheduleManager({
   onDateChange,
-  onSchedulesUpdate,
-  onAddSchedule,
-  onEditSchedule,
 }: ScheduleManagerProps) {
-  const today = new Date().toISOString().split("T")[0];
-  const [filterDate, setFilterDate] = useState<string>(today);
-  const [schedules, setSchedules] = useState<Schedule[]>([]);
-  const [loading, setLoading] = useState<boolean>(false);
+  // Get state and actions from Zustand stores
+  const { 
+    schedules, 
+    loading, 
+    error, 
+    filterDate, 
+    setFilterDate 
+  } = useScheduleStore();
+  
+  const { 
+    openAddModal, 
+    openEditModal 
+  } = useScheduleUIStore();
 
   // Add a ref to track if this is the initial mount
   const isInitialMount = useRef(true);
@@ -67,48 +69,12 @@ export default function ScheduleManager({
     }
   };
 
-  // Load schedules once on component mount or when filter changes
-  useEffect(() => {
-    const loadSchedules = async () => {
-      // Don't show loading indicator on initial mount to prevent flicker
-      if (!isInitialMount.current) {
-        setLoading(true);
-      }
-
-      try {
-        // Use the server action to fetch schedules
-        const params = filterDate
-          ? { startDate: filterDate, endDate: filterDate }
-          : { limit: 20 };
-
-        const data = await getSchedules(params);
-        setSchedules(data);
-
-        // Notify parent component about the schedules
-        if (onSchedulesUpdate) {
-          onSchedulesUpdate(data);
-        }
-      } catch (error) {
-        console.error("Failed to load schedules:", error);
-      } finally {
-        setLoading(false);
-        if (isInitialMount.current) {
-          isInitialMount.current = false;
-        }
-      }
-    };
-
-    loadSchedules();
-
-    // Only include filterDate in the dependency array
-  }, [filterDate]);
-
   // Handle filter date change
   const handleFilterChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newDate = e.target.value;
-    setFilterDate(newDate);
+    setFilterDate(newDate || null);
 
-    // Notify parent component about the date change
+    // Notify parent component about the date change if needed
     if (onDateChange) {
       onDateChange(newDate || undefined);
     }
@@ -116,27 +82,11 @@ export default function ScheduleManager({
 
   // Clear the filter
   const clearFilter = () => {
-    setFilterDate("");
+    setFilterDate(null);
 
-    // Notify parent component about the date change
+    // Notify parent component about the date change if needed
     if (onDateChange) {
       onDateChange(undefined);
-    }
-  };
-  
-  // Handle clicking the Add New Schedule button
-  const handleAddClick = (e: React.MouseEvent) => {
-    if (onAddSchedule) {
-      e.preventDefault();
-      onAddSchedule();
-    }
-  };
-  
-  // Handle clicking the View Details button
-  const handleViewDetailsClick = (e: React.MouseEvent, schedule: Schedule) => {
-    if (onEditSchedule) {
-      e.preventDefault();
-      onEditSchedule(schedule);
     }
   };
 
@@ -148,20 +98,12 @@ export default function ScheduleManager({
         </h1>
 
         <div className="flex justify-between items-center mb-lg flex-wrap gap-md mb-4">
-          {onAddSchedule ? (
-            <Button 
-              className="bg-primary text-white hover:bg-primary-dark"
-              onClick={handleAddClick}
-            >
-              Add New Schedule
-            </Button>
-          ) : (
-            <Link href="/schedules/new">
-              <Button className="bg-primary text-white hover:bg-primary-dark">
-                Add New Schedule
-              </Button>
-            </Link>
-          )}
+          <Button 
+            className="bg-primary text-white hover:bg-primary-dark"
+            onClick={openAddModal}
+          >
+            Add New Schedule
+          </Button>
 
           <div className="flex items-center gap-sm">
             <div className="flex items-center gap-sm">
@@ -176,7 +118,7 @@ export default function ScheduleManager({
                   type="date"
                   id="filterDate"
                   className="w-auto pr-9"
-                  value={filterDate}
+                  value={filterDate || ''}
                   onChange={handleFilterChange}
                 />
                 <Calendar className="absolute right-2 top-1/2 transform -translate-y-1/2 text-text-secondary w-5 h-5 pointer-events-none" />
@@ -200,6 +142,18 @@ export default function ScheduleManager({
             <div className="bg-surface p-lg rounded-md shadow-sm text-center">
               <p className="text-text-secondary">Loading schedules...</p>
             </div>
+          ) : error ? (
+            <div className="bg-red-50 p-lg rounded-md shadow-sm text-center">
+              <p className="text-red-600">{error}</p>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+                onClick={() => window.location.reload()}
+              >
+                Reload
+              </Button>
+            </div>
           ) : schedules.length === 0 ? (
             <div className="bg-surface p-lg rounded-md shadow-sm text-center">
               <p className="text-text-secondary">
@@ -207,22 +161,13 @@ export default function ScheduleManager({
                   ? `No schedules found for ${formatDate(filterDate)}.`
                   : "No schedules found. Add one to get started!"}
               </p>
-              {onAddSchedule ? (
-                <a 
-                  href="#" 
-                  onClick={handleAddClick} 
-                  className="text-primary hover:underline mt-md inline-block"
-                >
-                  Create your first schedule
-                </a>
-              ) : (
-                <Link
-                  href="/schedules/new"
-                  className="text-primary hover:underline mt-md inline-block"
-                >
-                  Create your first schedule
-                </Link>
-              )}
+              <a 
+                href="#" 
+                onClick={(e) => { e.preventDefault(); openAddModal(); }} 
+                className="text-primary hover:underline mt-md inline-block"
+              >
+                Create your first schedule
+              </a>
             </div>
           ) : (
             schedules.map((schedule) => (
@@ -309,54 +254,28 @@ export default function ScheduleManager({
                     </div>
 
                     <div className="mt-6 flex justify-end">
-                      {onEditSchedule ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="text-red-600 hover:text-red-800 hover:bg-red-50 border-red-300 hover:border-red-500 transition-colors flex items-center gap-1"
-                          onClick={(e) => handleViewDetailsClick(e, schedule)}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-800 hover:bg-red-50 border-red-300 hover:border-red-500 transition-colors flex items-center gap-1"
+                        onClick={() => openEditModal(schedule)}
+                      >
+                        View Details
+                        <svg
+                          className="w-3.5 h-3.5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                          xmlns="http://www.w3.org/2000/svg"
                         >
-                          View Details
-                          <svg
-                            className="w-3.5 h-3.5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M14 5l7 7m0 0l-7 7m7-7H3"
-                            />
-                          </svg>
-                        </Button>
-                      ) : (
-                        <Link href={`/schedules/${schedule.id}`}>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-red-600 hover:text-red-800 hover:bg-red-50 border-red-300 hover:border-red-500 transition-colors flex items-center gap-1"
-                          >
-                            View Details
-                            <svg
-                              className="w-3.5 h-3.5"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M14 5l7 7m0 0l-7 7m7-7H3"
-                              />
-                            </svg>
-                          </Button>
-                        </Link>
-                      )}
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M14 5l7 7m0 0l-7 7m7-7H3"
+                          />
+                        </svg>
+                      </Button>
                     </div>
                   </div>
                 </div>

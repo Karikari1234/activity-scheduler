@@ -3,9 +3,19 @@
 import ScheduleLayout from "../components/layout/ScheduleLayout";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
+import { useScheduleUIStore } from "@/stores/scheduleUIStore";
+import { useEffect } from "react";
 
 // This is a demo page to showcase the improved layout component
 export default function LayoutDemoPage() {
+  // Reset UI state when the page loads
+  const resetUI = useScheduleUIStore(state => state.resetUI);
+  
+  useEffect(() => {
+    // Reset UI state when component mounts
+    resetUI();
+  }, [resetUI]);
+  
   return (
     <div className="bg-background min-h-screen w-full">
       <div className="w-full px-sm py-sm sm:px-md sm:py-md">
