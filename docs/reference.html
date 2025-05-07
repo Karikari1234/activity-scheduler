@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Meeting Scheduler with Preview & Bangla PDF</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Hind+Siliguri:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <!-- Hind Siliguri is included via Google Fonts for the *web page* display -->
+
+    <!-- jsPDF Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+    <style>
+      /* --- Global Styles & Variables --- */
+      :root {
+        --primary-color: #6275a3; /* Muted blue/purple */
+        --primary-light: #e8eaf6;
+        --primary-dark: #3f51b5;
+        --accent-color: #ffab40; /* Subtle orange accent */
+        --text-color: #333;
+        --text-light: #666;
+        --bg-color: #f5f7fa; /* Light grey background */
+        --card-bg: #ffffff;
+        --border-color: #e0e0e0;
+        --danger-color: #e57373;
+        --danger-dark: #d32f2f;
+        --shadow-1: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+        --shadow-2: 0 3px 6px rgba(0, 0, 0, 0.16), 0 3px 6px rgba(0, 0, 0, 0.23);
+        --border-radius: 4px;
+        --preview-bg: #ffffff;
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      html {
+        font-size: 16px; /* Base font size */
+      }
+
+      body {
+        /* Default to Hind Siliguri for potential Bangla in UI */
+        font-family: "Hind Siliguri", "Roboto", sans-serif;
+        background-color: var(--bg-color);
+        color: var(--text-color);
+        line-height: 1.6;
+        display: flex; /* Use flexbox for side-by-side layout */
+        min-height: 100vh;
+        padding: 0; /* Remove body padding */
+        overflow-x: hidden; /* Prevent horizontal scroll from transitions */
+        transition: background-color 0.3s ease; /* Example transition */
+      }
+
+      h1,
+      h2 {
+        color: var(--primary-color);
+        margin-bottom: 1rem;
+        font-weight: 500; /* Use 500 for Hind Siliguri */
+      }
+      h3 {
+        font-weight: 500; /* Use 500 for Hind Siliguri */
+      }
+
+      a {
+        color: var(--primary-dark);
+        text-decoration: none;
+        transition: color 0.3s ease;
+      }
+      a:hover {
+        text-decoration: underline;
+        color: var(--accent-color);
+      }
+
+      /* --- Main Layout --- */
+      .main-content {
+        flex: 2; /* Default: Scheduler takes more space */
+        padding: 20px;
+        overflow-y: auto; /* Allow scrolling if content exceeds height */
+        height: 100vh;
+        display: flex; /* Use flex to keep container centered within */
+        justify-content: center;
+        transition: flex 0.3s ease, width 0.3s ease, padding 0.3s ease,
+          opacity 0.3s ease;
+        width: 66%; /* Default width */
+      }
+
+      .pdf-preview-area {
+        flex: 1; /* Default: Preview takes less space */
+        background-color: var(--preview-bg);
+        border-left: 1px solid var(--border-color);
+        box-shadow: -2px 0 5px rgba(0, 0, 0, 0.05);
+        padding: 20px;
+        overflow-y: auto; /* Allow scrolling for preview content */
+        height: 100vh; /* Make preview full height */
+        position: sticky; /* Keep preview visible on scroll */
+        top: 0;
+        transition: flex 0.3s ease, width 0.3s ease, padding 0.3s ease,
+          opacity 0.3s ease, border 0.3s ease;
+        width: 34%; /* Default width */
+      }
+
+      /* Layout States controlled by body classes */
+      body.state-full-preview .main-content {
+        flex: 0;
+        width: 0;
+        padding: 0;
+        opacity: 0;
+        overflow: hidden;
+      }
+      body.state-full-preview .pdf-preview-area {
+        flex: 1;
+        width: 100%;
+        border-left: none;
+      }
+
+      body.state-collapsed-preview .main-content {
+        flex: 1;
+        width: 100%;
+      }
+      body.state-collapsed-preview .pdf-preview-area {
+        flex: 0;
+        width: 0;
+        padding: 0;
+        opacity: 0;
+        border-left: none;
+        overflow: hidden;
+      }
+
+      /* Ensure default state is applied if no class */
+      body:not(.state-full-preview):not(.state-collapsed-preview)
+        .main-content {
+        flex: 2;
+        width: 66%;
+        opacity: 1;
+        padding: 20px;
+      }
+      body:not(.state-full-preview):not(.state-collapsed-preview)
+        .pdf-preview-area {
+        flex: 1;
+        width: 34%;
+        opacity: 1;
+        padding: 20px;
+        border-left: 1px solid var(--border-color);
+      }
+
+      /* --- Scheduler Container (within main-content) --- */
+      .scheduler-container {
+        max-width: 900px; /* Limit width of scheduler */
+        width: 100%; /* Take available width up to max-width */
+        margin: 0 auto; /* Center if main-content is wider */
+      }
+
+      /* --- Controls (Add Button & Filter) --- */
+      .controls {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        flex-wrap: wrap; /* Allow wrapping on smaller screens */
+        gap: 15px; /* Space between items when wrapped */
+      }
+
+      .filter-controls {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap; /* Allow filter items to wrap */
+        gap: 10px;
+      }
+
+      .filter-section {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .filter-section label {
+        font-weight: 500;
+        color: var(--text-light);
+        white-space: nowrap; /* Prevent label wrap */
+      }
+
+      /* --- Buttons --- */
+      .btn {
+        padding: 10px 15px; /* Slightly smaller padding */
+        border: none;
+        border-radius: var(--border-radius);
+        cursor: pointer;
+        font-size: 0.9rem;
+        font-weight: 500;
+        text-transform: uppercase;
+        transition: background-color 0.3s ease, box-shadow 0.3s ease,
+          opacity 0.3s ease;
+        box-shadow: var(--shadow-1);
+        white-space: nowrap; /* Prevent button text wrap */
+        font-family: "Roboto", sans-serif; /* Keep buttons in Roboto */
+      }
+      .btn:disabled {
+        background-color: #ccc;
+        cursor: not-allowed;
+        box-shadow: none;
+        opacity: 0.7;
+      }
+
+      .btn-primary {
+        background-color: var(--primary-color);
+        color: white;
+      }
+      .btn-primary:hover:not(:disabled) {
+        background-color: var(--primary-dark);
+        box-shadow: var(--shadow-2);
+      }
+      .btn-success {
+        background-color: #66bb6a;
+        color: white;
+      }
+      .btn-success:hover:not(:disabled) {
+        background-color: #43a047;
+        box-shadow: var(--shadow-2);
+      }
+      .btn-danger {
+        background-color: var(--danger-color);
+        color: white;
+      }
+      .btn-danger:hover:not(:disabled) {
+        background-color: var(--danger-dark);
+        box-shadow: var(--shadow-2);
+      }
+      .btn-secondary {
+        background-color: #eee;
+        color: var(--text-color);
+        border: 1px solid var(--border-color);
+        padding: 8px 10px;
+      }
+      .btn-secondary:hover:not(:disabled) {
+        background-color: #e0e0e0;
+        box-shadow: var(--shadow-2);
+      }
+
+      /* Icon button base style */
+      .btn-icon {
+        background: none;
+        border: none;
+        padding: 5px;
+        cursor: pointer;
+        font-size: 1.2rem;
+        color: var(--text-light);
+        transition: color 0.3s ease;
+        box-shadow: none;
+        margin-left: 5px;
+        line-height: 1; /* Align icons better */
+      }
+      .btn-icon:hover {
+        color: var(--primary-dark);
+      }
+      .btn-icon.delete-btn:hover {
+        color: var(--danger-dark);
+      }
+
+      /* Specific Preview control buttons */
+      .preview-controls .btn-icon {
+        font-size: 1.1rem;
+        padding: 6px 8px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        margin: 0 2px; /* Space between controls */
+        background-color: #f8f8f8;
+      }
+      .preview-controls .btn-icon:hover {
+        background-color: #eee;
+        border-color: #ccc;
+        color: var(--primary-color);
+      }
+      .preview-controls .btn-icon.active {
+        background-color: var(--primary-light);
+        border-color: var(--primary-color);
+        color: var(--primary-dark);
+        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+      }
+
+      /* --- Form / Modal Styles (Mostly unchanged) --- */
+      .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.5);
+        animation: fadeIn 0.3s ease-out;
+      }
+      .modal-content {
+        background-color: var(--card-bg);
+        margin: 8% auto;
+        padding: 30px;
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-2);
+        width: 90%;
+        max-width: 500px;
+        position: relative;
+        animation: slideIn 0.3s ease-out;
+      }
+      .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 1rem;
+        border-bottom: 1px solid var(--border-color);
+      }
+      .modal-header h2 {
+        margin-bottom: 0;
+      }
+      .close-btn {
+        color: var(--text-light);
+        font-size: 1.8rem;
+        font-weight: bold;
+        cursor: pointer;
+        border: none;
+        background: none;
+      }
+      .close-btn:hover,
+      .close-btn:focus {
+        color: var(--text-color);
+      }
+      .form-group {
+        margin-bottom: 1rem;
+      }
+      .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: 500;
+        color: var(--text-light);
+      }
+      .form-group input[type="text"],
+      .form-group input[type="date"],
+      .form-group input[type="time"],
+      .form-group input[type="url"],
+      .form-group textarea,
+      #filterDate {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        font-size: 1rem;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        font-family: "Hind Siliguri", "Roboto", sans-serif; /* Ensure form fields use the font */
+      }
+      .form-group input:focus,
+      .form-group textarea:focus,
+      #filterDate:focus {
+        outline: none;
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 2px var(--primary-light);
+      }
+      textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+      .form-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 1.5rem;
+      }
+
+      /* --- Meeting List Styles (Mostly unchanged) --- */
+      #meetingList {
+        margin-top: 2rem;
+        display: grid;
+        gap: 1.5rem;
+      }
+      .meeting-card {
+        background-color: var(--card-bg);
+        border-radius: var(--border-radius);
+        box-shadow: var(--shadow-1);
+        padding: 20px;
+        border-left: 5px solid var(--primary-color);
+        transition: box-shadow 0.3s ease;
+      }
+      .meeting-card:hover {
+        box-shadow: var(--shadow-2);
+      }
+      .meeting-card .meeting-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+        flex-wrap: wrap;
+        gap: 5px;
+      }
+      .meeting-card .meeting-date-time {
+        font-weight: 500;
+        color: var(--primary-dark);
+      }
+      .meeting-card .meeting-actions button {
+        margin-left: 8px;
+      }
+      .meeting-card .meeting-details p {
+        margin-bottom: 0.8rem;
+        color: var(--text-light);
+        word-break: break-word;
+      }
+      .meeting-card .meeting-details strong {
+        color: var(--text-color);
+        font-weight: 500;
+        margin-right: 5px;
+        display: inline-block;
+        min-width: 60px;
+      }
+      .meeting-card .meeting-agenda {
+        background-color: #f9f9f9;
+        padding: 10px;
+        border-radius: var(--border-radius);
+        margin-top: 10px;
+        border: 1px solid var(--border-color);
+      }
+      .meeting-card .meeting-agenda strong {
+        display: block;
+        margin-bottom: 5px;
+      }
+      .meeting-card .meeting-agenda p {
+        margin-bottom: 0;
+        color: var(--text-color);
+      }
+      .no-meetings {
+        text-align: center;
+        color: var(--text-light);
+        padding: 20px;
+        font-style: italic;
+      }
+
+      /* --- PDF Preview Pane Styles --- */
+      .preview-pane-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid var(--border-color);
+      }
+      .preview-pane-header h3 {
+        color: var(--primary-color);
+        margin-bottom: 0; /* Remove margin from h3 inside header */
+      }
+      .preview-controls {
+        display: flex;
+        gap: 5px;
+      }
+
+      #pdfPreviewContainer {
+        /* Styles remain for content inside */
+      }
+      .preview-content {
+        font-size: 0.9rem;
+      }
+      .preview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+      }
+      .preview-header .title {
+        font-weight: bold;
+        font-size: 1.1em;
+      }
+      .preview-header .date {
+        font-size: 1em;
+        color: var(--text-light);
+      }
+      .preview-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 1rem;
+        table-layout: fixed;
+      }
+      .preview-table th,
+      .preview-table td {
+        border: 1px solid var(--border-color);
+        padding: 8px 10px;
+        text-align: left;
+        vertical-align: top;
+        word-wrap: break-word;
+      }
+      .preview-table th {
+        background-color: #f2f2f2;
+        font-weight: 500;
+      }
+      .preview-table th:nth-child(1),
+      .preview-table td:nth-child(1) {
+        width: 18%;
+      } /* Time */
+      .preview-table th:nth-child(2),
+      .preview-table td:nth-child(2) {
+        width: 25%;
+      } /* Venue */
+      .preview-table th:nth-child(3),
+      .preview-table td:nth-child(3) {
+        width: 42%;
+      } /* Agenda */
+      .preview-table th:nth-child(4),
+      .preview-table td:nth-child(4) {
+        width: 15%;
+      } /* Comment */
+      .no-preview-data {
+        text-align: center;
+        color: var(--text-light);
+        margin-top: 2rem;
+        font-style: italic;
+      }
+
+      /* --- Animations --- */
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes slideIn {
+        from {
+          transform: translateY(-20px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+
+      /* --- Responsive --- */
+      @media (max-width: 1024px) {
+        /* Stacking breakpoint */
+        body {
+          flex-direction: column; /* Stack scheduler and preview */
+          height: auto; /* Allow body height to grow */
+        }
+        .main-content,
+        .pdf-preview-area {
+          flex: none !important; /* Override inline flex styles */
+          width: 100% !important; /* Override inline width styles */
+          height: auto; /* Allow height to adjust */
+          max-height: none;
+          overflow-y: visible; /* Reset overflow */
+          position: static; /* Reset sticky */
+          opacity: 1 !important; /* Ensure visible when stacked */
+          padding: 20px !important; /* Ensure padding */
+          border-left: none !important; /* Remove border */
+        }
+        /* Hide based on state class even when stacked */
+        body.state-full-preview .main-content {
+          display: none;
+        }
+        body.state-collapsed-preview .pdf-preview-area {
+          display: none;
+        }
+
+        .main-content {
+          padding-bottom: 0;
+        }
+        .pdf-preview-area {
+          border-top: 1px solid var(--border-color);
+          margin-top: 20px;
+        }
+        .scheduler-container {
+          margin: 0;
+        }
+      }
+
+      @media (max-width: 768px) {
+        /* Keep existing 768px rules for controls, etc. */
+        .controls {
+          flex-direction: column;
+          align-items: stretch;
+        }
+        .filter-controls {
+          justify-content: space-between;
+          width: 100%;
+          margin-top: 15px;
+        }
+        #addMeetingBtn {
+          width: 100%;
+        }
+        .filter-section {
+          flex-grow: 1;
+        }
+      }
+
+      @media (max-width: 480px) {
+        /* Keep existing 480px rules */
+        .main-content,
+        .pdf-preview-area {
+          padding: 15px !important;
+        } /* Ensure padding */
+        .modal-content {
+          margin: 15% auto;
+          width: 95%;
+          padding: 20px;
+        }
+        h1 {
+          font-size: 1.6rem;
+        }
+        .meeting-card .meeting-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 5px;
+        }
+        .meeting-card .meeting-actions {
+          margin-top: 10px;
+          align-self: flex-end;
+        }
+        .filter-controls {
+          flex-direction: column;
+          align-items: stretch;
+          gap: 10px;
+        }
+        .filter-section {
+          justify-content: space-between;
+        }
+        .preview-table {
+          font-size: 0.85rem;
+        }
+        .preview-table th,
+        .preview-table td {
+          padding: 6px 8px;
+        }
+        .preview-pane-header {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+        }
+        .preview-controls {
+          align-self: flex-end;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Default state is half/half -->
+
+    <div class="main-content">
+      <div class="scheduler-container">
+        <h1>Meeting Scheduler</h1>
+        <!-- Add some Bengali text here for testing UI font -->
+        <!-- <p>মিটিং শিডিউলার</p> -->
+
+        <div class="controls">
+          <button id="addMeetingBtn" class="btn btn-primary">
+            Add New Meeting
+          </button>
+          <div class="filter-controls">
+            <div class="filter-section">
+              <label for="filterDate">Filter by Date:</label>
+              <input type="date" id="filterDate" class="form-control" />
+              <button
+                id="clearFilterBtn"
+                class="btn btn-secondary"
+                title="Clear Filter"
+              >
+                ×
+              </button>
+            </div>
+            <button
+              id="downloadPdfBtn"
+              class="btn btn-success"
+              title="Download Schedule for Selected Date"
+              disabled
+            >
+              Download PDF
+            </button>
+          </div>
+        </div>
+
+        <div id="meetingList">
+          <!-- Meeting cards injected here -->
+        </div>
+      </div>
+    </div>
+
+    <div class="pdf-preview-area">
+      <div class="preview-pane-header">
+        <h3>PDF Preview</h3>
+        <div class="preview-controls">
+          <button
+            id="collapsePreviewBtn"
+            class="btn-icon"
+            title="Collapse Preview"
+          >
+            ←
+          </button>
+          <button
+            id="halfPreviewBtn"
+            class="btn-icon active"
+            title="Half Screen Preview"
+          >
+            D
+          </button>
+          <!-- Placeholder D for Divider/Half -->
+          <button
+            id="fullPreviewBtn"
+            class="btn-icon"
+            title="Full Screen Preview"
+          >
+            →
+          </button>
+        </div>
+      </div>
+      <div id="pdfPreviewContainer">
+        <!-- PDF Preview content injected here -->
+        <p class="no-preview-data">
+          Select a date in the filter to see the preview.
+        </p>
+      </div>
+    </div>
+
+    <!-- Add/Edit Meeting Modal -->
+    <div id="meetingModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="modalTitle">Add Meeting</h2>
+          <button class="close-btn" id="closeModalBtn">×</button>
+        </div>
+
+        <form id="meetingForm">
+          <input type="hidden" id="meetingId" />
+          <div class="form-group">
+            <label for="meetingDate">Date *</label>
+            <input type="date" id="meetingDate" required />
+          </div>
+          <div class="form-group">
+            <label for="meetingTime">Time *</label>
+            <input type="time" id="meetingTime" required />
+          </div>
+          <div class="form-group">
+            <label for="meetingVenue">Venue * (বাংলা লিখতে পারেন)</label>
+            <input
+              type="text"
+              id="meetingVenue"
+              placeholder="e.g., কনফারেন্স রুম ১"
+              required
+            />
+          </div>
+          <div class="form-group">
+            <label for="meetingAgenda">Agenda * (বাংলা লিখতে পারেন)</label>
+            <textarea
+              id="meetingAgenda"
+              placeholder="মিটিং এর বিষয়..."
+              required
+            ></textarea>
+          </div>
+          <div class="form-group">
+            <label for="meetingCommentUrl">Comment Link (Optional)</label>
+            <input
+              type="url"
+              id="meetingCommentUrl"
+              placeholder="https://example.com/docs"
+            />
+          </div>
+          <div class="form-actions">
+            <button type="button" id="cancelBtn" class="btn btn-secondary">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-primary">Save Meeting</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <script>
+      // --- Font Data Placeholder ---
+      // IMPORTANT: Replace this empty string with the actual Base64 encoded
+      // string of your HindSiliguri-Regular.ttf font file.
+      const hindSiliguriBase64 = `PLACEHOLDER_FOR_HIND_SILIGURI_REGULAR_BASE64_STRING`;
+      // Example (truncated): 'AAEAAAATAQAABAA.....'
+
+      // --- Check if placeholder is still present ---
+      if (
+        hindSiliguriBase64 ===
+        "PLACEHOLDER_FOR_HIND_SILIGURI_REGULAR_BASE64_STRING"
+      ) {
+        console.warn(
+          "Bengali font (Hind Siliguri) Base64 data is missing. PDF export for Bengali text will likely fail. Please replace the placeholder in the script."
+        );
+        // Optionally disable PDF button or show UI warning if font is critical
+        // document.getElementById('downloadPdfBtn').disabled = true;
+        // document.getElementById('downloadPdfBtn').title = 'PDF Font Missing';
+      }
+
+      document.addEventListener("DOMContentLoaded", () => {
+        // --- DOM Elements ---
+        const addMeetingBtn = document.getElementById("addMeetingBtn");
+        const meetingModal = document.getElementById("meetingModal");
+        const closeModalBtn = document.getElementById("closeModalBtn");
+        const cancelBtn = document.getElementById("cancelBtn");
+        const meetingForm = document.getElementById("meetingForm");
+        const meetingList = document.getElementById("meetingList");
+        const modalTitle = document.getElementById("modalTitle");
+        const filterDateInput = document.getElementById("filterDate");
+        const clearFilterBtn = document.getElementById("clearFilterBtn");
+        const downloadPdfBtn = document.getElementById("downloadPdfBtn");
+        const pdfPreviewContainer = document.getElementById(
+          "pdfPreviewContainer"
+        );
+        // Preview Control Buttons
+        const collapsePreviewBtn =
+          document.getElementById("collapsePreviewBtn");
+        const halfPreviewBtn = document.getElementById("halfPreviewBtn");
+        const fullPreviewBtn = document.getElementById("fullPreviewBtn");
+        const previewControlBtns = [
+          collapsePreviewBtn,
+          halfPreviewBtn,
+          fullPreviewBtn,
+        ];
+
+        // Form Fields (unchanged)
+        const meetingIdInput = document.getElementById("meetingId");
+        const meetingDateInput = document.getElementById("meetingDate");
+        const meetingTimeInput = document.getElementById("meetingTime");
+        const meetingVenueInput = document.getElementById("meetingVenue");
+        const meetingAgendaInput = document.getElementById("meetingAgenda");
+        const meetingCommentUrlInput =
+          document.getElementById("meetingCommentUrl");
+
+        // --- State & Local Storage (unchanged) ---
+        let meetings = [];
+        let isEditing = false;
+        const STORAGE_KEY = "meetingSchedulerData";
+
+        function loadMeetingsFromStorage() {
+          const storedMeetings = localStorage.getItem(STORAGE_KEY);
+          meetings = storedMeetings ? JSON.parse(storedMeetings) : [];
+        }
+
+        function saveMeetingsToStorage() {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(meetings));
+        }
+
+        // --- Utility Functions (unchanged) ---
+        function formatTime(timeString) {
+          /* ... */
+        }
+        function formatDate(dateString) {
+          /* ... */
+        }
+        function escapeHTML(str) {
+          /* ... */
+        }
+        // --- (Copy the formatTime, formatDate, escapeHTML functions from the previous version here) ---
+        function formatTime(timeString) {
+          if (!timeString) return "N/A";
+          try {
+            const [hours, minutes] = timeString.split(":");
+            const h = parseInt(hours, 10);
+            const m = parseInt(minutes, 10);
+            if (isNaN(h) || isNaN(m)) return timeString;
+            const ampm = h >= 12 ? "PM" : "AM";
+            const formattedHours = h % 12 === 0 ? 12 : h % 12;
+            const formattedMinutes = m < 10 ? "0" + m : m;
+            return `${formattedHours}:${formattedMinutes} ${ampm}`;
+          } catch (e) {
+            console.error("Time format error:", timeString, e);
+            return timeString;
+          }
+        }
+        function formatDate(dateString) {
+          if (!dateString) return "N/A";
+          try {
+            const date = new Date(dateString + "T00:00:00");
+            if (isNaN(date.getTime())) return dateString;
+            return date.toLocaleDateString("en-US", {
+              year: "numeric",
+              month: "short",
+              day: "numeric",
+            });
+          } catch (e) {
+            console.error("Date format error:", dateString, e);
+            return dateString;
+          }
+        }
+        function escapeHTML(str) {
+          if (typeof str !== "string") return "";
+          const div = document.createElement("div");
+          div.appendChild(document.createTextNode(str));
+          return div.innerHTML;
+        }
+
+        // --- Rendering Functions ---
+        function renderMeetings(filterDate = "") {
+          meetingList.innerHTML = "";
+          const sortedMeetings = [...meetings].sort((a, b) => {
+            /* ... sort logic ... */
+            const dateTimeA = new Date(`${a.date}T${a.time || "00:00"}`);
+            const dateTimeB = new Date(`${b.date}T${b.time || "00:00"}`);
+            if (isNaN(dateTimeA) || isNaN(dateTimeB)) return 0;
+            return dateTimeA - dateTimeB;
+          });
+
+          const meetingsToDisplay = filterDate
+            ? sortedMeetings.filter((meeting) => meeting.date === filterDate)
+            : sortedMeetings;
+
+          // Render Meeting Cards (left side)
+          if (meetingsToDisplay.length === 0 && !filterDate) {
+            meetingList.innerHTML = `<p class="no-meetings">No meetings scheduled yet. Add one!</p>`;
+          } else if (meetingsToDisplay.length === 0 && filterDate) {
+            meetingList.innerHTML = `<p class="no-meetings">No meetings scheduled for ${formatDate(
+              filterDate
+            )}.</p>`;
+          } else {
+            meetingsToDisplay.forEach((meeting) => {
+              /* ... create and append card ... */
+              const card = document.createElement("div");
+              card.className = "meeting-card";
+              card.dataset.id = meeting.id;
+              const displayTime = formatTime(meeting.time);
+              const displayDate = formatDate(meeting.date);
+              card.innerHTML = `
+                            <div class="meeting-header"> <span class="meeting-date-time">${displayDate} | ${displayTime}</span> <div class="meeting-actions"> <button class="btn-icon edit-btn" data-id="${
+                meeting.id
+              }" title="Edit">✏️</button> <button class="btn-icon delete-btn" data-id="${
+                meeting.id
+              }" title="Delete">🗑️</button> </div> </div>
+                            <div class="meeting-details"> <p><strong>Venue:</strong> ${escapeHTML(
+                              meeting.venue
+                            )}</p> <div class="meeting-agenda"> <strong>Agenda:</strong> <p>${escapeHTML(
+                meeting.agenda
+              ).replace(/\n/g, "<br>")}</p> </div> ${
+                meeting.commentUrl
+                  ? `<p><strong>Comment:</strong> <a href="${escapeHTML(
+                      meeting.commentUrl
+                    )}" target="_blank" rel="noopener noreferrer">Link</a></p>`
+                  : ""
+              } </div>
+                        `;
+              meetingList.appendChild(card);
+            });
+          }
+
+          // Render PDF Preview (right side)
+          renderPdfPreview(filterDate, meetingsToDisplay);
+          updatePdfButtonState(filterDate);
+        }
+
+        // --- PDF Preview Rendering (renderPdfPreview function - unchanged from previous version) ---
+        function renderPdfPreview(selectedDate, meetingsForDate) {
+          pdfPreviewContainer.innerHTML = "";
+          if (!selectedDate) {
+            pdfPreviewContainer.innerHTML = `<p class="no-preview-data">Select a date in the filter to see the preview.</p>`;
+            return;
+          }
+          const formattedDate = formatDate(selectedDate);
+          let previewHtml = `<div class="preview-content"> <div class="preview-header"> <span class="title">Meeting Schedule</span> <span class="date">${formattedDate}</span> </div>`;
+          if (meetingsForDate.length === 0) {
+            previewHtml += `<p class="no-preview-data">No meetings scheduled for ${formattedDate}.</p>`;
+          } else {
+            const sortedPreviewMeetings = [...meetingsForDate].sort((a, b) =>
+              (a.time || "00:00").localeCompare(b.time || "00:00")
+            );
+            previewHtml += `<table class="preview-table"> <thead> <tr> <th>Time</th> <th>Venue</th> <th>Agenda</th> <th>Comment</th> </tr> </thead> <tbody>`;
+            sortedPreviewMeetings.forEach((meeting) => {
+              previewHtml += `<tr> <td>${formatTime(
+                meeting.time
+              )}</td> <td>${escapeHTML(meeting.venue)}</td> <td>${escapeHTML(
+                meeting.agenda
+              ).replace(/\n/g, "<br>")}</td> <td>${
+                meeting.commentUrl
+                  ? `<a href="${escapeHTML(
+                      meeting.commentUrl
+                    )}" target="_blank" rel="noopener noreferrer" title="${escapeHTML(
+                      meeting.commentUrl
+                    )}">Link</a>`
+                  : ""
+              }</td> </tr>`;
+            });
+            previewHtml += `</tbody></table>`;
+          }
+          previewHtml += `</div>`;
+          pdfPreviewContainer.innerHTML = previewHtml;
+        }
+
+        // Update PDF Download Button Enable/Disable state (unchanged)
+        function updatePdfButtonState(filterDate) {
+          /* ... */
+          downloadPdfBtn.disabled = !filterDate;
+          downloadPdfBtn.title = filterDate
+            ? `Download Schedule for ${formatDate(filterDate)}`
+            : "Select a date in the filter to download PDF";
+        }
+
+        // --- Modal Functions (unchanged) ---
+        function openModal(editMode = false, meetingData = null) {
+          /* ... */
+        }
+        function closeModal() {
+          /* ... */
+        }
+        // --- (Copy openModal, closeModal functions from previous version) ---
+        function openModal(editMode = false, meetingData = null) {
+          isEditing = editMode;
+          meetingForm.reset();
+          meetingIdInput.value = "";
+          if (editMode && meetingData) {
+            modalTitle.textContent = "Edit Meeting";
+            meetingIdInput.value = meetingData.id;
+            meetingDateInput.value = meetingData.date;
+            meetingTimeInput.value = meetingData.time;
+            meetingVenueInput.value = meetingData.venue;
+            meetingAgendaInput.value = meetingData.agenda;
+            meetingCommentUrlInput.value = meetingData.commentUrl || "";
+          } else {
+            modalTitle.textContent = "Add New Meeting";
+            const today = new Date().toISOString().split("T")[0];
+            meetingDateInput.value = today;
+            const now = new Date();
+            const currentTime = now.toTimeString().substring(0, 5);
+            meetingTimeInput.value = currentTime;
+          }
+          meetingModal.style.display = "block";
+        }
+        function closeModal() {
+          meetingModal.style.display = "none";
+          meetingForm.reset();
+          isEditing = false;
+        }
+
+        // --- CRUD Functions (unchanged) ---
+        function addMeeting(data) {
+          /* ... calls renderMeetings ... */
+        }
+        function updateMeeting(id, updatedData) {
+          /* ... calls renderMeetings ... */
+        }
+        function deleteMeeting(id) {
+          /* ... calls renderMeetings ... */
+        }
+        // --- (Copy addMeeting, updateMeeting, deleteMeeting functions from previous version) ---
+        function addMeeting(data) {
+          const newMeeting = { id: Date.now().toString(), ...data };
+          meetings.push(newMeeting);
+          saveMeetingsToStorage();
+          renderMeetings(filterDateInput.value);
+        }
+        function updateMeeting(id, updatedData) {
+          meetings = meetings.map((m) =>
+            m.id === id ? { ...m, ...updatedData } : m
+          );
+          saveMeetingsToStorage();
+          renderMeetings(filterDateInput.value);
+        }
+        function deleteMeeting(id) {
+          if (confirm("Are you sure you want to delete this meeting?")) {
+            meetings = meetings.filter((m) => m.id !== id);
+            saveMeetingsToStorage();
+            renderMeetings(filterDateInput.value);
+          }
+        }
+
+        // --- PDF Generation (UPDATED FOR BENGALI FONT) ---
+        function generatePdf(selectedDate) {
+          if (!selectedDate) {
+            alert("Please select a date to generate the PDF.");
+            return;
+          }
+          if (
+            hindSiliguriBase64 ===
+            "PLACEHOLDER_FOR_HIND_SILIGURI_REGULAR_BASE64_STRING"
+          ) {
+            alert(
+              "Error: Bengali font data is missing. PDF cannot be generated correctly. Please check console."
+            );
+            return;
+          }
+
+          const { jsPDF } = window.jspdf;
+          if (!jsPDF) {
+            alert("Error: jsPDF library not loaded.");
+            return;
+          }
+
+          const meetingsForDate = meetings
+            .filter((m) => m.date === selectedDate)
+            .sort((a, b) =>
+              (a.time || "00:00").localeCompare(b.time || "00:00")
+            );
+
+          if (meetingsForDate.length === 0) {
+            alert(`No meetings scheduled for ${formatDate(selectedDate)}.`);
+            return;
+          }
+
+          try {
+            const doc = new jsPDF();
+            const pageHeight = doc.internal.pageSize.height;
+            const pageWidth = doc.internal.pageSize.width;
+            const margin = 15;
+            let currentY = 20;
+
+            // ---- FONT EMBEDDING ----
+            const FONT_FILENAME = "HindSiliguri-Regular.ttf";
+            const FONT_NAME_ALIAS = "HindSiliguri";
+            doc.addFileToVFS(FONT_FILENAME, hindSiliguriBase64);
+            doc.addFont(FONT_FILENAME, FONT_NAME_ALIAS, "normal");
+            // ---- END FONT EMBEDDING ----
+
+            // PDF Header (Using default Helvetica)
+            doc.setFont("helvetica", "bold"); // Explicitly set default font
+            doc.setFontSize(16);
+            doc.text("Meeting Schedule", margin, currentY);
+
+            doc.setFont("helvetica", "normal"); // Switch back to normal for date
+            doc.setFontSize(12);
+            const formattedDate = formatDate(selectedDate);
+            const dateWidth =
+              (doc.getStringUnitWidth(formattedDate) *
+                doc.internal.getFontSize()) /
+              doc.internal.scaleFactor;
+            doc.text(formattedDate, pageWidth - margin - dateWidth, currentY);
+            currentY += 15;
+
+            // PDF Table Headers (Using default Helvetica)
+            const tableHeaders = ["Time", "Venue", "Agenda", "Comment"];
+            const colWidths = [25, 45, 80, 30];
+            const rowHeight = 8; // Slightly increase base row height for Bangla
+            const headerBgColor = "#eeeeee";
+            const borderColor = "#dddddd";
+
+            doc.setFontSize(10);
+            doc.setFont("helvetica", "bold"); // Bold for headers
+            doc.setFillColor(headerBgColor);
+            doc.rect(
+              margin,
+              currentY,
+              colWidths.reduce((a, b) => a + b, 0),
+              rowHeight,
+              "F"
+            );
+            let currentX = margin;
+            tableHeaders.forEach((header, i) => {
+              doc.setTextColor(0, 0, 0);
+              doc.rect(currentX, currentY, colWidths[i], rowHeight, "S");
+              // Center header text vertically (approx)
+              const textY =
+                currentY + rowHeight / 2 + doc.internal.getFontSize() / 3;
+              doc.text(header, currentX + 2, textY);
+              currentX += colWidths[i];
+            });
+            currentY += rowHeight;
+
+            // Draw Table Rows (Using Bengali Font)
+            doc.setFont(FONT_NAME_ALIAS, "normal"); // <<<<<<< SET BENGALI FONT HERE
+            doc.setFontSize(10); // Reset font size if needed
+
+            meetingsForDate.forEach((meeting) => {
+              // Ensure data is string for splitTextToSize
+              const rowData = [
+                formatTime(meeting.time) || "",
+                meeting.venue || "",
+                meeting.agenda || "",
+                meeting.commentUrl ? "Link" : "",
+              ];
+
+              let maxLines = 0;
+              const textLinesArray = [];
+
+              // Pre-calculate lines and max lines for row height
+              rowData.forEach((text, i) => {
+                const lines = doc.splitTextToSize(
+                  text.toString(),
+                  colWidths[i] - 4
+                ); // -4 for padding
+                textLinesArray.push(lines);
+                if (lines.length > maxLines) {
+                  maxLines = lines.length;
+                }
+              });
+
+              const calculatedRowHeight = Math.max(
+                rowHeight,
+                maxLines *
+                  ((doc.internal.getFontSize() * 1.2) /
+                    doc.internal.scaleFactor) +
+                  4
+              ); // Calculate dynamic height + padding
+
+              // Page Break Check
+              if (currentY + calculatedRowHeight > pageHeight - margin) {
+                doc.addPage();
+                currentY = margin;
+                // Redraw headers on new page (Helvetica)
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(10);
+                doc.setFillColor(headerBgColor);
+                doc.rect(
+                  margin,
+                  currentY,
+                  colWidths.reduce((a, b) => a + b, 0),
+                  rowHeight,
+                  "F"
+                );
+                currentX = margin;
+                tableHeaders.forEach((header, i) => {
+                  doc.setTextColor(0, 0, 0);
+                  doc.rect(currentX, currentY, colWidths[i], rowHeight, "S");
+                  const textY =
+                    currentY + rowHeight / 2 + doc.internal.getFontSize() / 3;
+                  doc.text(header, currentX + 2, textY);
+                  currentX += colWidths[i];
+                });
+                currentY += rowHeight;
+                // Switch back to Bengali font for continued rows
+                doc.setFont(FONT_NAME_ALIAS, "normal");
+                doc.setFontSize(10);
+              }
+
+              // Draw Cells for the current row
+              currentX = margin;
+              rowData.forEach((_, i) => {
+                const lines = textLinesArray[i];
+                doc.setTextColor(50, 50, 50);
+                doc.rect(
+                  currentX,
+                  currentY,
+                  colWidths[i],
+                  calculatedRowHeight,
+                  "S"
+                ); // Use calculated height
+                // Draw text line by line for better control (needed for Bangla line spacing sometimes)
+                const textStartY =
+                  currentY +
+                  (doc.internal.getFontSize() * 1.1) / doc.internal.scaleFactor; // Start slightly lower
+                doc.text(lines, currentX + 2, textStartY); // +2 padding
+                currentX += colWidths[i];
+              });
+              currentY += calculatedRowHeight;
+            });
+
+            // Save PDF
+            doc.save(`meeting_schedule_${selectedDate}.pdf`);
+          } catch (error) {
+            console.error("Error generating PDF:", error);
+            alert(
+              "An error occurred while generating the PDF. Check the console for details. Ensure the font data is correct."
+            );
+          }
+        }
+
+        // --- Event Listeners ---
+        addMeetingBtn.addEventListener("click", () => openModal(false));
+        closeModalBtn.addEventListener("click", closeModal);
+        cancelBtn.addEventListener("click", closeModal);
+        window.addEventListener("click", (event) => {
+          if (event.target === meetingModal) closeModal();
+        });
+
+        // Form Submission (unchanged)
+        meetingForm.addEventListener("submit", (event) => {
+          /* ... */
+          event.preventDefault();
+          const meetingData = {
+            date: meetingDateInput.value,
+            time: meetingTimeInput.value,
+            venue: meetingVenueInput.value.trim(),
+            agenda: meetingAgendaInput.value.trim(),
+            commentUrl: meetingCommentUrlInput.value.trim(),
+          };
+          if (
+            !meetingData.date ||
+            !meetingData.time ||
+            !meetingData.venue ||
+            !meetingData.agenda
+          ) {
+            alert("Please fill in all required fields (*).");
+            return;
+          }
+          if (isEditing) updateMeeting(meetingIdInput.value, meetingData);
+          else addMeeting(meetingData);
+          closeModal();
+        });
+
+        // Edit/Delete Clicks (unchanged)
+        meetingList.addEventListener("click", (event) => {
+          /* ... */
+          const target = event.target;
+          const card = target.closest(".meeting-card");
+          if (!card) return;
+          const meetingId = card.dataset.id;
+          if (
+            target.classList.contains("edit-btn") ||
+            target.closest(".edit-btn")
+          ) {
+            const meetingToEdit = meetings.find((m) => m.id === meetingId);
+            if (meetingToEdit) openModal(true, meetingToEdit);
+          } else if (
+            target.classList.contains("delete-btn") ||
+            target.closest(".delete-btn")
+          ) {
+            deleteMeeting(meetingId);
+          }
+        });
+
+        // Date Filtering (unchanged)
+        filterDateInput.addEventListener("input", () => {
+          renderMeetings(filterDateInput.value);
+        });
+        clearFilterBtn.addEventListener("click", () => {
+          filterDateInput.value = "";
+          renderMeetings();
+        });
+        downloadPdfBtn.addEventListener("click", () => {
+          generatePdf(filterDateInput.value);
+        });
+
+        // --- NEW: Preview Size Control Listeners ---
+        function setPreviewState(state) {
+          // state = 'collapsed', 'half', 'full'
+          const body = document.body;
+          body.classList.remove(
+            "state-collapsed-preview",
+            "state-full-preview"
+          ); // Remove existing states
+          previewControlBtns.forEach((btn) => btn.classList.remove("active")); // Deactivate all buttons
+
+          if (state === "collapsed") {
+            body.classList.add("state-collapsed-preview");
+            collapsePreviewBtn.classList.add("active");
+          } else if (state === "full") {
+            body.classList.add("state-full-preview");
+            fullPreviewBtn.classList.add("active");
+          } else {
+            // Default to half
+            // No class needed for half state, just ensure others are removed
+            halfPreviewBtn.classList.add("active");
+          }
+        }
+
+        collapsePreviewBtn.addEventListener("click", () =>
+          setPreviewState("collapsed")
+        );
+        halfPreviewBtn.addEventListener("click", () => setPreviewState("half"));
+        fullPreviewBtn.addEventListener("click", () => setPreviewState("full"));
+
+        // --- Initial Load ---
+        loadMeetingsFromStorage();
+        renderMeetings(filterDateInput.value); // Initial render
+        setPreviewState("half"); // Ensure initial state is visually set
+      });
+    </script>
+  </body>
+</html>
