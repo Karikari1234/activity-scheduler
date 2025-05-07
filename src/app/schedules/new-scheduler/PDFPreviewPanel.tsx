@@ -7,19 +7,15 @@ import { ArrowLeft, ArrowRight, Maximize } from "lucide-react";
 interface PDFPreviewProps {
   selectedDate?: string;
   meetings?: any[];
+  viewState: "default" | "full-preview" | "collapsed-preview";
+  setViewState: (state: "default" | "full-preview" | "collapsed-preview") => void;
 }
 
 const PDFPreviewPanel: React.FC<PDFPreviewProps> = ({
-  selectedDate = "May 7, 2025",
-  meetings = [
-    {
-      id: "1",
-      time: "10:57 AM",
-      venue: "New meeting",
-      agenda: "We dont know",
-      commentLink: "https://example.com",
-    },
-  ],
+  selectedDate,
+  meetings = [],
+  viewState,
+  setViewState
 }) => {
   return (
     <div className="h-full p-6 bg-surface">
@@ -32,20 +28,23 @@ const PDFPreviewPanel: React.FC<PDFPreviewProps> = ({
         {/* View controls */}
         <div className="flex gap-1">
           <button
-            className="h-8 w-8 flex items-center justify-center border border-divider rounded-md bg-background hover:bg-hover"
+            onClick={() => setViewState("collapsed-preview")}
+            className={`h-8 w-8 flex items-center justify-center border border-divider rounded-md hover:bg-hover ${viewState === "collapsed-preview" ? "bg-indigo-100 text-indigo-700" : "bg-background"}`}
             title="Collapse preview"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <button
-            className="h-8 w-8 flex items-center justify-center border border-divider rounded-md bg-background hover:bg-hover bg-indigo-100 text-indigo-700"
+            onClick={() => setViewState("full-preview")}
+            className={`h-8 w-8 flex items-center justify-center border border-divider rounded-md hover:bg-hover ${viewState === "full-preview" ? "bg-indigo-100 text-indigo-700" : "bg-background"}`}
             title="Full screen"
           >
-            D
+            <Maximize className="w-4 h-4" />
           </button>
           <button
-            className="h-8 w-8 flex items-center justify-center border border-divider rounded-md bg-background hover:bg-hover"
-            title="Expand preview"
+            onClick={() => setViewState("default")}
+            className={`h-8 w-8 flex items-center justify-center border border-divider rounded-md hover:bg-hover ${viewState === "default" ? "bg-indigo-100 text-indigo-700" : "bg-background"}`}
+            title="Default view"
           >
             <ArrowRight className="w-4 h-4" />
           </button>

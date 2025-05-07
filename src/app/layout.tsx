@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import "react-day-picker/dist/style.css";
 import Link from "next/link"; 
 import { createClient } from "@/utils/supabase/server";
 import LogoutButton from "./components/LogoutButton";

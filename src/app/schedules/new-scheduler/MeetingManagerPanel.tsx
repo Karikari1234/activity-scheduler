@@ -3,26 +3,39 @@
 
 import React, { useState } from 'react';
 import { Calendar, X } from 'lucide-react';
+import { format } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@radix-ui/react-popover';
+import { DayPicker } from 'react-day-picker';
 import MeetingCard from './components/MeetingCard';
 import MeetingFormModal from './components/MeetingFormModal';
 
-const MeetingManagerPanel = () => {
-  const [filterDate, setFilterDate] = useState<string>('05/07/2025');
+interface MeetingManagerPanelProps {
+  filterDate: string;
+  setFilterDate: (date: string) => void;
+  meetings: any[];
+  updateMeetings: (meetings: any[]) => void;
+}
+
+const MeetingManagerPanel: React.FC<MeetingManagerPanelProps> = ({ 
+  filterDate, 
+  setFilterDate, 
+  meetings: initialMeetings, 
+  updateMeetings 
+}) => {
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<any>(null);
-  const [meetings, setMeetings] = useState<any[]>([
-    {
-      id: '1',
-      date: 'May 7, 2025',
-      time: '10:57 AM',
-      venue: 'New meeting',
-      agenda: 'We dont know',
-      commentLink: 'https://example.com/comment'
-    }
-  ]);
 
   const handleClearFilter = () => {
     setFilterDate('');
+    setCalendarOpen(false);
+  };
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setFilterDate(format(date, 'MM/dd/yyyy'));
+    }
+    setCalendarOpen(false);
   };
 
   const handleOpenAddModal = () => {
@@ -36,20 +49,26 @@ const MeetingManagerPanel = () => {
   };
 
   const handleSaveMeeting = (meetingData: any) => {
+    let updatedMeetings;
+    
     if (editingMeeting) {
       // Update existing meeting
-      setMeetings(meetings.map(m => 
+      updatedMeetings = initialMeetings.map(m => 
         m.id === editingMeeting.id ? { ...meetingData, id: editingMeeting.id } : m
-      ));
+      );
     } else {
       // Add new meeting
-      setMeetings([...meetings, { ...meetingData, id: Date.now().toString() }]);
+      updatedMeetings = [...initialMeetings, { ...meetingData, id: Date.now().toString() }];
     }
+    
+    // Update meetings in parent component
+    updateMeetings(updatedMeetings);
     setIsModalOpen(false);
   };
 
   const handleDeleteMeeting = (id: string) => {
-    setMeetings(meetings.filter(m => m.id !== id));
+    const updatedMeetings = initialMeetings.filter(m => m.id !== id);
+    updateMeetings(updatedMeetings);
   };
 
   return (
@@ -70,14 +89,26 @@ const MeetingManagerPanel = () => {
           <div className="flex items-center gap-2">
             <span className="text-text-secondary whitespace-nowrap">Filter by Date:</span>
             <div className="relative flex items-center">
-              <input 
-                type="text" 
-                className="input-text pr-8"
-                value={filterDate}
-                onChange={(e) => setFilterDate(e.target.value)}
-                placeholder="MM/DD/YYYY"
-              />
-              <Calendar className="absolute right-2 text-text-secondary w-4 h-4" />
+              <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
+                <PopoverTrigger asChild>
+                  <button 
+                    type="button"
+                    className="input-text pr-8 flex items-center cursor-pointer text-left"
+                    onClick={() => setCalendarOpen(true)}
+                  >
+                    {filterDate || "Select date..."}
+                    <Calendar className="absolute right-2 text-text-secondary w-4 h-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="p-0 bg-white border border-divider rounded-md shadow-md z-50">
+                  <DayPicker
+                    mode="single"
+                    selected={filterDate ? new Date(filterDate) : undefined}
+                    onSelect={handleDateSelect}
+                    className="p-3"
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             <button 
               className="h-9 w-9 flex items-center justify-center border border-divider rounded-md bg-background text-xl"
@@ -96,12 +127,12 @@ const MeetingManagerPanel = () => {
       
       {/* Meeting List */}
       <div className="space-y-4">
-        {meetings.length === 0 ? (
+        {initialMeetings.length === 0 ? (
           <div className="text-center text-text-secondary py-12 border border-divider rounded-md bg-surface">
-            No meetings scheduled yet.
+            {filterDate ? 'No meetings scheduled for this date.' : 'No meetings scheduled yet.'}
           </div>
         ) : (
-          meetings.map(meeting => (
+          initialMeetings.map(meeting => (
             <MeetingCard 
               key={meeting.id}
               meeting={meeting}
