@@ -1,5 +1,4 @@
 /* eslint-disable prefer-const */
-/* eslint-disable @typescript-eslint/no-explicit-any */
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -11,6 +10,7 @@ import {
   PopoverTrigger,
 } from "@radix-ui/react-popover";
 import { DayPicker } from "react-day-picker";
+import { MeetingUI } from "../utils/dataConverters";
 
 // Time options for dropdown
 const timeOptions: string[] = [];
@@ -27,8 +27,8 @@ for (let hour = 0; hour < 24; hour++) {
 interface MeetingFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (meeting: any) => void;
-  meeting?: any;
+  onSave: (meeting: Partial<MeetingUI>) => Promise<boolean>;
+  meeting?: MeetingUI | null;
 }
 
 const MeetingFormModal: React.FC<MeetingFormModalProps> = ({
@@ -40,6 +40,7 @@ const MeetingFormModal: React.FC<MeetingFormModalProps> = ({
   const [formData, setFormData] = useState({
     date: meeting?.date || "",
     time: meeting?.time || "",
+    timeEnd: meeting?.timeEnd || "",
     venue: meeting?.venue || "",
     agenda: meeting?.agenda || "",
     commentLink: meeting?.commentLink || "",
@@ -47,17 +48,39 @@ const MeetingFormModal: React.FC<MeetingFormModalProps> = ({
 
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
 
-  // Initialize selectedDate if meeting has a date
+  // Initialize form data when meeting changes
   useEffect(() => {
-    if (meeting?.date) {
+    if (meeting) {
+      setFormData({
+        date: meeting.date || "",
+        time: meeting.time || "",
+        timeEnd: meeting.timeEnd || "",
+        venue: meeting.venue || "",
+        agenda: meeting.agenda || "",
+        commentLink: meeting.commentLink || "",
+      });
+      
+      // Set selected date for the calendar
       try {
-        const parsedDate = parse(meeting.date, "MMMM d, yyyy", new Date());
-        setSelectedDate(parsedDate);
+        if (meeting.date) {
+          const parsedDate = parse(meeting.date, "MMMM d, yyyy", new Date());
+          setSelectedDate(parsedDate);
+        }
       } catch (error) {
         console.error("Failed to parse date", error);
       }
     } else {
+      // Reset form for new meeting
+      setFormData({
+        date: "",
+        time: "",
+        timeEnd: "",
+        venue: "",
+        agenda: "",
+        commentLink: "",
+      });
       setSelectedDate(undefined);
     }
   }, [meeting]);
@@ -81,11 +104,67 @@ const MeetingFormModal: React.FC<MeetingFormModalProps> = ({
   const handleTimeSelect = (time: string) => {
     setFormData((prev) => ({ ...prev, time }));
     setShowTimePicker(false);
+    
+    // If end time is not set, default to 30 minutes later
+    if (!formData.timeEnd) {
+      // Find the index of selected time
+      const timeIndex = timeOptions.findIndex(t => t === time);
+      if (timeIndex >= 0 && timeIndex < timeOptions.length - 1) {
+        // Set end time to the next time slot
+        setFormData(prev => ({ ...prev, timeEnd: timeOptions[timeIndex + 1] }));
+      }
+    }
+  };
+  
+  const handleEndTimeSelect = (timeEnd: string) => {
+    setFormData((prev) => ({ ...prev, timeEnd }));
+    setShowEndTimePicker(false);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSave(formData);
+    
+    // Calculate schedule date in ISO format for backend
+    let scheduleDate = "";
+    if (formData.date) {
+      try {
+        const dateObj = parse(formData.date, "MMMM d, yyyy", new Date());
+        scheduleDate = format(dateObj, "yyyy-MM-dd");
+      } catch (error) {
+        console.error("Failed to parse date", error);
+      }
+    }
+    
+    // Prepare meeting data for submission
+    const meetingData: Partial<MeetingUI> = {
+      date: formData.date,
+      scheduleDate,
+      time: formData.time,
+      timeStart: formData.time ? convertTo24HourFormat(formData.time) : "",
+      timeEnd: formData.timeEnd ? convertTo24HourFormat(formData.timeEnd) : "",
+      venue: formData.venue,
+      agenda: formData.agenda,
+      commentLink: formData.commentLink
+    };
+    
+    // Save and close modal only on success
+    const success = await onSave(meetingData);
+    if (success) {
+      onClose();
+    }
+  };
+  
+  // Utility function to convert 12-hour time format to 24-hour format
+  function convertTo24HourFormat(time12h: string): string {
+    try {
+      // Create a date object with the time string
+      const timeObj = parse(time12h, "h:mm a", new Date());
+      // Format to 24-hour format
+      return format(timeObj, "HH:mm");
+    } catch (error) {
+      console.error("Error converting time format:", error);
+      return time12h; // Return original if parsing fails
+    }
   };
 
   if (!isOpen) return null;
@@ -138,13 +217,13 @@ const MeetingFormModal: React.FC<MeetingFormModalProps> = ({
             <input type="hidden" name="date" value={formData.date} required />
           </div>
 
-          {/* Time */}
+          {/* Start Time */}
           <div>
             <label
               htmlFor="time"
               className="block text-sm font-medium text-text-primary mb-1"
             >
-              Time *
+              Start Time *
             </label>
             <Popover open={showTimePicker} onOpenChange={setShowTimePicker}>
               <PopoverTrigger asChild>
@@ -154,7 +233,7 @@ const MeetingFormModal: React.FC<MeetingFormModalProps> = ({
                   className="input-text w-full flex justify-between items-center text-left"
                   onClick={() => setShowTimePicker(true)}
                 >
-                  {formData.time || "Select time..."}
+                  {formData.time || "Select start time..."}
                   <Clock className="h-4 w-4 text-text-secondary" />
                 </button>
               </PopoverTrigger>
@@ -179,6 +258,49 @@ const MeetingFormModal: React.FC<MeetingFormModalProps> = ({
             </Popover>
             {/* Hidden input for form validation */}
             <input type="hidden" name="time" value={formData.time} required />
+          </div>
+          
+          {/* End Time */}
+          <div>
+            <label
+              htmlFor="timeEnd"
+              className="block text-sm font-medium text-text-primary mb-1"
+            >
+              End Time *
+            </label>
+            <Popover open={showEndTimePicker} onOpenChange={setShowEndTimePicker}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  id="timeEnd"
+                  className="input-text w-full flex justify-between items-center text-left"
+                  onClick={() => setShowEndTimePicker(true)}
+                >
+                  {formData.timeEnd || "Select end time..."}
+                  <Clock className="h-4 w-4 text-text-secondary" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="bg-white border border-divider rounded-md shadow-md p-2 z-50 w-48 max-h-60 overflow-y-auto">
+                <div className="grid gap-1">
+                  {timeOptions.map((time) => (
+                    <button
+                      key={time}
+                      type="button"
+                      className={`text-left px-3 py-1.5 rounded-sm hover:bg-blue-50 ${
+                        formData.timeEnd === time
+                          ? "bg-blue-100 text-blue-700"
+                          : ""
+                      }`}
+                      onClick={() => handleEndTimeSelect(time)}
+                    >
+                      {time}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+            {/* Hidden input for form validation */}
+            <input type="hidden" name="timeEnd" value={formData.timeEnd} required />
           </div>
 
           {/* Venue */}

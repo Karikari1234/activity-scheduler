@@ -2,21 +2,32 @@
 "use client";
 
 import React from "react";
-import { ArrowLeft, ArrowRight, Maximize } from "lucide-react";
+import { ArrowRight, Maximize, RefreshCw, Download } from "lucide-react";
+import { useScheduleUIStore } from "@/stores/scheduleUIStore";
+import { MeetingUI } from "./utils/dataConverters";
 
 interface PDFPreviewProps {
   selectedDate?: string;
-  meetings?: any[];
+  meetings?: MeetingUI[];
   viewState: "default" | "full-preview" | "collapsed-preview";
   setViewState: (state: "default" | "full-preview" | "collapsed-preview") => void;
+  loading?: boolean;
 }
 
 const PDFPreviewPanel: React.FC<PDFPreviewProps> = ({
   selectedDate,
   meetings = [],
   viewState,
-  setViewState
+  setViewState,
+  loading = false
 }) => {
+  // Generate PDF handling goes here
+  const handleDownloadPDF = () => {
+    // PDF download logic would go here
+    console.log("Downloading PDF for", selectedDate, "with", meetings.length, "meetings");
+    alert("PDF Download functionality will be implemented in a future update.");
+  };
+
   return (
     <div className="h-full p-6 bg-surface">
       {/* Header */}
@@ -28,30 +39,36 @@ const PDFPreviewPanel: React.FC<PDFPreviewProps> = ({
         {/* View controls */}
         <div className="flex gap-1">
           <button
-            onClick={() => setViewState("collapsed-preview")}
-            className={`h-8 w-8 flex items-center justify-center border border-divider rounded-md hover:bg-hover ${viewState === "collapsed-preview" ? "bg-indigo-100 text-indigo-700" : "bg-background"}`}
-            title="Collapse preview"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </button>
-          <button
             onClick={() => setViewState("full-preview")}
             className={`h-8 w-8 flex items-center justify-center border border-divider rounded-md hover:bg-hover ${viewState === "full-preview" ? "bg-indigo-100 text-indigo-700" : "bg-background"}`}
-            title="Full screen"
+            title="Full screen preview"
           >
             <Maximize className="w-4 h-4" />
           </button>
           <button
             onClick={() => setViewState("default")}
             className={`h-8 w-8 flex items-center justify-center border border-divider rounded-md hover:bg-hover ${viewState === "default" ? "bg-indigo-100 text-indigo-700" : "bg-background"}`}
-            title="Default view"
+            title="Split view"
           >
             <ArrowRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleDownloadPDF}
+            className={`h-8 w-8 flex items-center justify-center border border-divider rounded-md hover:bg-hover bg-background`}
+            title="Download PDF"
+            disabled={!selectedDate || meetings.length === 0}
+          >
+            <Download className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      {!selectedDate ? (
+      {loading ? (
+        <div className="text-center text-text-secondary py-12 bg-background rounded-md border border-divider shadow-sm flex flex-col items-center justify-center">
+          <RefreshCw className="w-8 h-8 animate-spin mb-4 text-primary" />
+          <p>Loading meetings data...</p>
+        </div>
+      ) : !selectedDate ? (
         <div className="text-center text-text-secondary py-12 bg-background rounded-md border border-divider shadow-sm">
           Select a date in the filter to see the preview.
         </div>
@@ -117,6 +134,22 @@ const PDFPreviewPanel: React.FC<PDFPreviewProps> = ({
                 )}
               </tbody>
             </table>
+          </div>
+          
+          {/* PDF Footer */}
+          <div className="border-t border-divider p-4 text-center">
+            <p className="text-text-secondary text-sm">
+              {meetings.length} meeting{meetings.length !== 1 ? 's' : ''} scheduled for {selectedDate}
+            </p>
+            {meetings.length > 0 && (
+              <button 
+                onClick={handleDownloadPDF}
+                className="mt-2 btn-secondary text-sm px-4 py-1 inline-flex items-center gap-2"
+              >
+                <Download className="w-3 h-3" /> 
+                Download as PDF
+              </button>
+            )}
           </div>
         </div>
       )}

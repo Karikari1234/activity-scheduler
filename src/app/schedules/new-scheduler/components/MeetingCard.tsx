@@ -2,18 +2,10 @@
 
 import React from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
-
-interface Meeting {
-  id: string;
-  date: string;
-  time: string;
-  venue: string;
-  agenda: string;
-  commentLink?: string;
-}
+import { MeetingUI } from '../utils/dataConverters';
 
 interface MeetingCardProps {
-  meeting: Meeting;
+  meeting: MeetingUI;
   onEdit: () => void;
   onDelete: () => void;
 }

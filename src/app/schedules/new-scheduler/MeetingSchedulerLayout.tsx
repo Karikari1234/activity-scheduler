@@ -1,53 +1,95 @@
 /* eslint-disable */
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import MeetingManagerPanel from "./MeetingManagerPanel";
 import PDFPreviewPanel from "./PDFPreviewPanel";
 import { format, parse, isValid } from "date-fns";
-
-// Sample meeting data
-const sampleMeetings = [
-  {
-    id: "1",
-    date: "May 7, 2025",
-    time: "10:57 AM",
-    venue: "New meeting",
-    agenda: "We dont know",
-    commentLink: "https://example.com/comment",
-  },
-  {
-    id: "2",
-    date: "May 8, 2025",
-    time: "2:30 PM",
-    venue: "Conference Room A",
-    agenda: "Project planning session",
-    commentLink: "https://example.com/project-notes",
-  },
-  {
-    id: "3",
-    date: "May 7, 2025",
-    time: "4:00 PM",
-    venue: "Virtual meeting",
-    agenda: "Weekly status update",
-    commentLink: "",
-  },
-];
+import { useScheduleStore } from "@/stores/scheduleStore";
+import { useScheduleUIStore } from "@/stores/scheduleUIStore";
+import { scheduleToMeetingUI, MeetingUI, convertToISODate, prepareMeetingFormData } from "./utils/dataConverters";
+import { useToast } from "./contexts/ToastContext";
 
 // Main layout component
 const MeetingSchedulerLayout = () => {
-  const [viewState, setViewState] = useState<
-    "default" | "full-preview" | "collapsed-preview"
-  >("default");
-  const [filterDate, setFilterDate] = useState<string>("05/07/2025");
-  const [meetings, setMeetings] = useState(sampleMeetings);
-  const [filteredMeetings, setFilteredMeetings] = useState(sampleMeetings);
-  const [formattedSelectedDate, setFormattedSelectedDate] =
-    useState<string>("May 7, 2025");
+  // Get toast context
+  const { showToast } = useToast();
+  
+  // Get state and actions from scheduleStore
+  const { 
+    schedules,
+    loading,
+    error,
+    filterDate: storeFilterDate,
+    fetchSchedules, 
+    createSchedule, 
+    updateSchedule, 
+    deleteSchedule,
+    setFilterDate,
+    clearError
+  } = useScheduleStore();
+  
+  // Get view state management from UI store
+  const { 
+    viewState,
+    setViewState
+  } = useScheduleUIStore();
+  
+  // Local state for derived/processed data
+  const [localFilterDate, setLocalFilterDate] = useState<string>("05/07/2025");
+  const [meetings, setMeetings] = useState<MeetingUI[]>([]);
+  const [filteredMeetings, setFilteredMeetings] = useState<MeetingUI[]>([]);
+  const [formattedSelectedDate, setFormattedSelectedDate] = useState<string>("May 7, 2025");
+  
+  // Sync store filter date with local state when needed
+  useEffect(() => {
+    if (storeFilterDate) {
+      // Convert ISO date format to MM/DD/YYYY for local state
+      const dateObj = new Date(storeFilterDate);
+      if (isValid(dateObj)) {
+        setLocalFilterDate(format(dateObj, "MM/dd/yyyy"));
+      }
+    }
+  }, [storeFilterDate]);
+  
+  // Fetch schedules when filter date changes in the store
+  useEffect(() => {
+    if (storeFilterDate) {
+      fetchSchedules({
+        startDate: storeFilterDate,
+        endDate: storeFilterDate
+      });
+    } else {
+      fetchSchedules({ limit: 20 });
+    }
+  }, [storeFilterDate, fetchSchedules]);
+  
+  // Convert backend schedules to UI meetings format
+  useEffect(() => {
+    if (!schedules) return;
+    
+    // Convert backend data to frontend format
+    const uiMeetings = Array.isArray(schedules) ? schedules.map(scheduleToMeetingUI) : [];
+    console.log('Converted UI meetings:', uiMeetings);
+    setMeetings(uiMeetings);
+  }, [schedules]);
+  
+  // Convert local filter date to ISO and update store when changed
+  const handleFilterDateChange = useCallback((date: string) => {
+    setLocalFilterDate(date);
+    
+    if (date) {
+      // Convert to ISO format and update store
+      const isoDate = convertToISODate(date);
+      setFilterDate(isoDate);
+    } else {
+      setFilterDate(null);
+    }
+  }, [setFilterDate]);
 
   // Filter meetings when filterDate changes
   useEffect(() => {
-    if (!filterDate) {
+    if (!localFilterDate) {
       // If no filter date, show all meetings
       setFilteredMeetings(meetings);
       setFormattedSelectedDate("");
@@ -56,7 +98,7 @@ const MeetingSchedulerLayout = () => {
 
     try {
       // Parse the filter date (MM/DD/YYYY) to a Date object
-      const dateObj = parse(filterDate, "MM/dd/yyyy", new Date());
+      const dateObj = parse(localFilterDate, "MM/dd/yyyy", new Date());
 
       if (isValid(dateObj)) {
         // Format the date in the display format for the PDF preview
@@ -72,24 +114,105 @@ const MeetingSchedulerLayout = () => {
     } catch (error) {
       console.error("Failed to parse date", error);
       setFilteredMeetings([]);
+      showToast("Failed to parse date format", "error");
     }
-  }, [filterDate, meetings]);
+  }, [localFilterDate, meetings, showToast]);
 
-  // Handler for adding/updating meetings
-  const handleUpdateMeetings = (
-    updatedMeetings: React.SetStateAction<
-      {
-        id: string;
-        date: string;
-        time: string;
-        venue: string;
-        agenda: string;
-        commentLink: string;
-      }[]
-    >
-  ) => {
-    setMeetings(updatedMeetings);
+  // Handler for adding a new meeting
+  const handleAddMeeting = async (meetingData: Partial<MeetingUI>) => {
+    try {
+      clearError();
+      
+      // Prepare form data for backend
+      const formData = prepareMeetingFormData(meetingData);
+      
+      // Create the schedule in backend
+      const newSchedule = await createSchedule(formData);
+      
+      // Success notification
+      if (newSchedule) {
+        showToast("Meeting created successfully", "success");
+      }
+      
+      return true;
+    } catch (err) {
+      console.error("Failed to add meeting:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to add meeting";
+      showToast(errorMessage, "error");
+      return false;
+    }
   };
+  
+  // Handler for updating an existing meeting
+  const handleUpdateMeeting = async (id: string, meetingData: Partial<MeetingUI>) => {
+    try {
+      clearError();
+      
+      // Prepare form data for backend
+      const formData = prepareMeetingFormData(meetingData);
+      
+      // Update the schedule in backend
+      const updatedSchedule = await updateSchedule(id, formData);
+      
+      // Success notification
+      if (updatedSchedule) {
+        showToast("Meeting updated successfully", "success");
+      }
+      
+      return true;
+    } catch (err) {
+      console.error("Failed to update meeting:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to update meeting";
+      showToast(errorMessage, "error");
+      return false;
+    }
+  };
+  
+  // Handler for deleting a meeting
+  const handleDeleteMeeting = async (id: string) => {
+    try {
+      clearError();
+      
+      // Delete the schedule from backend
+      const success = await deleteSchedule(id);
+      
+      // Success notification
+      if (success) {
+        showToast("Meeting deleted successfully", "success");
+      }
+      
+      return true;
+    } catch (err) {
+      console.error("Failed to delete meeting:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to delete meeting";
+      showToast(errorMessage, "error");
+      return false;
+    }
+  };
+  
+  // Handler for managing meetings (add, update, delete)
+  const handleUpdateMeetings = {
+    add: handleAddMeeting,
+    update: handleUpdateMeeting,
+    delete: handleDeleteMeeting
+  };
+
+  // Handler for manually refreshing meetings data
+  const handleRefresh = useCallback(() => {
+    const isoDate = storeFilterDate || (localFilterDate ? convertToISODate(localFilterDate) : null);
+    if (isoDate) {
+      fetchSchedules({
+        startDate: isoDate,
+        endDate: isoDate
+      }).then(() => {
+        showToast("Meetings data refreshed", "info");
+      });
+    } else {
+      fetchSchedules({ limit: 20 }).then(() => {
+        showToast("Meetings data refreshed", "info");
+      });
+    }
+  }, [localFilterDate, storeFilterDate, fetchSchedules, showToast]);
 
   return (
     <div className="flex w-full min-h-[calc(100vh-10rem)] border border-divider rounded-md overflow-hidden shadow-sm">
@@ -103,11 +226,19 @@ const MeetingSchedulerLayout = () => {
             : "w-2/3"
         }`}
       >
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            Error: {error}
+          </div>
+        )}
+        
         <MeetingManagerPanel
-          filterDate={filterDate}
-          setFilterDate={setFilterDate}
+          filterDate={localFilterDate}
+          setFilterDate={handleFilterDateChange}
           meetings={filteredMeetings}
           updateMeetings={handleUpdateMeetings}
+          loading={loading}
+          onRefresh={handleRefresh}
         />
       </div>
 
@@ -126,6 +257,7 @@ const MeetingSchedulerLayout = () => {
           meetings={filteredMeetings}
           setViewState={setViewState}
           viewState={viewState}
+          loading={loading}
         />
       </div>
     </div>
