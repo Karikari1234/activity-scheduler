@@ -1,10 +1,12 @@
 /* eslint-disable */
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { ArrowRight, Maximize, RefreshCw, Download } from "lucide-react";
 import { useScheduleUIStore } from "@/stores/scheduleUIStore";
 import { MeetingUI } from "./utils/dataConverters";
+import { generateMeetingsPDF } from "./utils/pdf/pdfGenerator";
+import { useToast } from "./contexts/ToastContext";
 
 interface PDFPreviewProps {
   selectedDate?: string;
@@ -21,11 +23,30 @@ const PDFPreviewPanel: React.FC<PDFPreviewProps> = ({
   setViewState,
   loading = false
 }) => {
-  // Generate PDF handling goes here
-  const handleDownloadPDF = () => {
-    // PDF download logic would go here
-    console.log("Downloading PDF for", selectedDate, "with", meetings.length, "meetings");
-    alert("PDF Download functionality will be implemented in a future update.");
+  const { showToast } = useToast();
+  const [generatingPDF, setGeneratingPDF] = useState(false);
+  
+  // Generate and download PDF
+  const handleDownloadPDF = async () => {
+    if (!selectedDate || meetings.length === 0) return;
+    
+    try {
+      setGeneratingPDF(true);
+      
+      // Generate PDF using our utility function
+      await generateMeetingsPDF(meetings, selectedDate);
+      
+      // Show success message
+      showToast("PDF generated successfully", "success");
+    } catch (error: Error | unknown) {
+      console.error("PDF generation failed:", error);
+      showToast(
+        error instanceof Error ? error.message : "Failed to generate PDF", 
+        "error"
+      );
+    } finally {
+      setGeneratingPDF(false);
+    }
   };
 
   return (
@@ -54,11 +75,15 @@ const PDFPreviewPanel: React.FC<PDFPreviewProps> = ({
           </button>
           <button
             onClick={handleDownloadPDF}
-            className={`h-8 w-8 flex items-center justify-center border border-divider rounded-md hover:bg-hover bg-background`}
+            className={`h-8 w-8 flex items-center justify-center border border-divider rounded-md hover:bg-hover bg-background ${generatingPDF ? 'opacity-50' : ''}`}
             title="Download PDF"
-            disabled={!selectedDate || meetings.length === 0}
+            disabled={!selectedDate || meetings.length === 0 || generatingPDF}
           >
-            <Download className="w-4 h-4" />
+            {generatingPDF ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Download className="w-4 h-4" />
+            )}
           </button>
         </div>
       </div>
@@ -144,10 +169,20 @@ const PDFPreviewPanel: React.FC<PDFPreviewProps> = ({
             {meetings.length > 0 && (
               <button 
                 onClick={handleDownloadPDF}
-                className="mt-2 btn-secondary text-sm px-4 py-1 inline-flex items-center gap-2"
+                disabled={generatingPDF}
+                className={`mt-2 btn-secondary text-sm px-4 py-1 inline-flex items-center gap-2 ${generatingPDF ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                <Download className="w-3 h-3" /> 
-                Download as PDF
+                {generatingPDF ? (
+                  <>
+                    <RefreshCw className="w-3 h-3 animate-spin" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-3 h-3" />
+                    Download as PDF
+                  </>
+                )}
               </button>
             )}
           </div>

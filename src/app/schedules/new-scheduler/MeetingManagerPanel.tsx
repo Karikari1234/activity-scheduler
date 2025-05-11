@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Calendar, X, RefreshCw } from 'lucide-react';
+import { Calendar, X, RefreshCw, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@radix-ui/react-popover';
 import { DayPicker } from 'react-day-picker';
@@ -10,6 +10,7 @@ import MeetingCard from './components/MeetingCard';
 import MeetingFormModal from './components/MeetingFormModal';
 import { useScheduleUIStore } from '@/stores/scheduleUIStore';
 import { MeetingUI } from './utils/dataConverters';
+import { useToast } from './contexts/ToastContext';
 
 interface MeetingManagerPanelProps {
   filterDate: string;
@@ -35,9 +36,13 @@ const MeetingManagerPanel: React.FC<MeetingManagerPanelProps> = ({
   const [calendarOpen, setCalendarOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMeeting, setEditingMeeting] = useState<MeetingUI | null>(null);
+  const [generatingPDF, setGeneratingPDF] = useState(false);
   
   // Get UI store functions for more efficient modal management
   const openAddModal = useScheduleUIStore(state => state.openAddModal);
+  
+  // Get toast functionality for user feedback
+  const { showToast } = useToast();
 
   const handleClearFilter = () => {
     setFilterDate('');
@@ -146,8 +151,52 @@ const MeetingManagerPanel: React.FC<MeetingManagerPanelProps> = ({
             )}
           </div>
           
-          <button className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors uppercase text-sm">
-            DOWNLOAD PDF
+          <button 
+            className="bg-green-500 text-white px-4 py-2 rounded-md hover:bg-green-600 transition-colors uppercase text-sm"
+            onClick={() => {
+              if (!meetings || meetings.length === 0) {
+                return;
+              }
+              
+              setGeneratingPDF(true);
+              
+              // Import dynamically to avoid issues with SSR
+              import('./utils/pdf/pdfGenerator').then(({ generateMeetingsPDF }) => {
+                const formattedDate = filterDate ? new Date(filterDate).toLocaleDateString('en-US', { 
+                  month: 'long', 
+                  day: 'numeric', 
+                  year: 'numeric' 
+                }) : 'Schedule';
+                
+                showToast("Generating PDF...", "info");
+                
+                generateMeetingsPDF(meetings, formattedDate)
+                  .then(() => {
+                    showToast("PDF generated successfully", "success");
+                  })
+                  .catch((error: Error | unknown) => {
+                    console.error('Failed to generate PDF:', error);
+                    showToast(
+                      error instanceof Error ? error.message : "Failed to generate PDF", 
+                      "error"
+                    );
+                  })
+                  .finally(() => {
+                    setGeneratingPDF(false);
+                  });
+              });
+            }}
+            disabled={!filterDate || loading || meetings.length === 0 || generatingPDF}
+            title="Download PDF of the filtered meetings"
+          >
+            <span className="flex items-center gap-1">
+              {generatingPDF ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              {generatingPDF ? "GENERATING..." : "DOWNLOAD PDF"}
+            </span>
           </button>
         </div>
       </div>

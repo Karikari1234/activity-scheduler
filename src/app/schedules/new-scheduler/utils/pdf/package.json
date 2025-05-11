@@ -1,0 +1,9 @@
+{
+  "name": "pdf-generator",
+  "private": true,
+  "description": "PDF generation utilities for Activity Scheduler",
+  "dependencies": {
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2"
+  }
+}
