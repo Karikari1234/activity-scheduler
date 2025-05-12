@@ -30,13 +30,27 @@ export async function updateProfile(formData: FormData) {
     })
     .eq('id', user.id);
   
+    console.log("User ID:", user.id);
+  
   if (profileError) {
     console.error("Error updating profile:", profileError);
     redirect("/error");
+  } 
+
+  const { error: flagError } = await supabase
+    .from('user_info_flag')
+    .update({ profile_update: true })
+    .eq('id', user.id);
+  
+  if (flagError) {
+    // handle error from user_info_flag update
+    redirect("/error");
   }
   
+  
   revalidatePath("/profile");
-  redirect("/profile?updated=true");
+  //redirect("/profile?updated=true");
+  redirect("/dashboard")
 }
 
 export async function updateEmail(formData: FormData) {
