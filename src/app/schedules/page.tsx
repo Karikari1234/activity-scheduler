@@ -61,9 +61,9 @@ export default async function SchedulesPage() {
                   </p>
                 </div>
                 
-                <div className="flex items-center">
+                {/* <div className="flex items-center">
                   <span className="material-icons text-text-secondary">chevron_right</span>
-                </div>
+                </div> */}
               </div>
               
               <div className="mt-sm grid grid-cols-1 md:grid-cols-2 gap-md">
